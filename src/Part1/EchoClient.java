@@ -14,6 +14,8 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 import java.util.Scanner;
 
+import javax.crypto.Cipher;
+
 public class EchoClient {
 
     private Socket clientSocket;
@@ -51,17 +53,21 @@ public class EchoClient {
             byte[] data = msg.getBytes("UTF-8");
             
             // encrypt data
-        
+            Cipher cipher = Cipher.getInstance(CIPHER);
+            cipher.init(Cipher.ENCRYPT_MODE, destinationKey);
 
-            System.out.println("Client sending ciphertext "+Util.bytesToHex(data));
-            out.write(data);
+            byte[] encrypted = cipher.doFinal(data);
+
+            System.out.println("Client sending ciphertext "+Util.bytesToHex(encrypted));
+            out.write(encrypted);
             out.flush();
             in.read(data);
             
             // decrypt data
+            cipher.init(Cipher.DECRYPT_MODE, sourceKey);
+            byte[] decrypted = cipher.doFinal(data);
 
-
-            String reply = new String(data, "UTF-8");
+            String reply = new String(decrypted, "UTF-8");
             System.out.println("Server returned cleartext "+reply);
             return reply;
         } catch (Exception e) {
@@ -125,9 +131,9 @@ public class EchoClient {
         client.startConnection("127.0.0.1", 4444);
 
         client.sendMessage("12345678", serverPublicKey, keyPair.getPrivate());
-        client.sendMessage("ABCDEFGH", serverPublicKey, keyPair.getPrivate());
-        client.sendMessage("87654321", serverPublicKey, keyPair.getPrivate());
-        client.sendMessage("HGFEDCBA", serverPublicKey, keyPair.getPrivate());
+        //client.sendMessage("ABCDEFGH", serverPublicKey, keyPair.getPrivate());
+        //client.sendMessage("87654321", serverPublicKey, keyPair.getPrivate());
+        //client.sendMessage("HGFEDCBA", serverPublicKey, keyPair.getPrivate());
         client.stopConnection();
     }
 }

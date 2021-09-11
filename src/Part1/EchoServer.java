@@ -2,6 +2,7 @@ package Part1;
 
 import java.net.*;
 import java.io.*;
+import java.security.InvalidKeyException;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -13,6 +14,11 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 import java.util.Scanner;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 
 public class EchoServer {
 
@@ -29,22 +35,42 @@ public class EchoServer {
      * Keep receiving messages until the input stream is closed by the client.
      *
      * @param port the port number of the server
+     * @throws NoSuchPaddingException
+     * @throws NoSuchAlgorithmException
+     * @throws InvalidKeyException
+     * @throws BadPaddingException
+     * @throws IllegalBlockSizeException
      */
-    public void start(int port) {
+    public void start(int port, PublicKey destinationKey, PrivateKey sourceKey) throws NoSuchAlgorithmException, 
+    NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
         try {
             serverSocket = new ServerSocket(port);
             clientSocket = serverSocket.accept();
             out = new DataOutputStream(clientSocket.getOutputStream());
             in = new DataInputStream(clientSocket.getInputStream());
-            byte[] data = new byte[8];
+            byte[] data = new byte[2048];
+            ByteArrayOutputStream cipherData = new ByteArrayOutputStream();
             int numBytes;
+           
             while ((numBytes = in.read(data)) != -1) {
+                cipherData.write(data, 0, numBytes);
+
+                System.out.println("Server Received ciphertext: " +Util.bytesToHex(cipherData.toByteArray()));
+
                 // decrypt data
-                String msg = new String(data, "UTF-8");
+                Cipher cipher = Cipher.getInstance(CIPHER);
+                cipher.init(Cipher.DECRYPT_MODE, sourceKey);
+                byte[] decrypted = cipher.doFinal(cipherData.toByteArray());
+    
+                String msg = new String(decrypted, "UTF-8");
                 System.out.println("Server received cleartext "+msg);
+    
                 // encrypt response (this is just the decrypted data re-encrypted)
-                System.out.println("Server sending ciphertext "+Util.bytesToHex(data));
-                out.write(data);
+                cipher.init(Cipher.ENCRYPT_MODE, destinationKey);
+                byte[] encrypted = cipher.doFinal(msg.getBytes());
+    
+                System.out.println("Server sending ciphertext "+Util.bytesToHex(encrypted));
+                out.write(encrypted);
                 out.flush();
             }
             stop();
@@ -107,7 +133,7 @@ public class EchoServer {
         }
         System.out.println("<-------------------------------------->\n");
 
-        server.start(4444);
+        server.start(4444, clientPublicKey, keyPair.getPrivate());
     }
 
 }
