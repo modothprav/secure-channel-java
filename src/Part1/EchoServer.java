@@ -48,28 +48,24 @@ public class EchoServer {
             clientSocket = serverSocket.accept();
             out = new DataOutputStream(clientSocket.getOutputStream());
             in = new DataInputStream(clientSocket.getInputStream());
-            byte[] data = new byte[2048];
-            ByteArrayOutputStream cipherData = new ByteArrayOutputStream();
+            byte[] data = new byte[256];
             int numBytes;
-           
             while ((numBytes = in.read(data)) != -1) {
-                cipherData.write(data, 0, numBytes);
-
-                System.out.println("Server Received ciphertext: " +Util.bytesToHex(cipherData.toByteArray()));
-
                 // decrypt data
                 Cipher cipher = Cipher.getInstance(CIPHER);
                 cipher.init(Cipher.DECRYPT_MODE, sourceKey);
-                byte[] decrypted = cipher.doFinal(cipherData.toByteArray());
+                byte[] decrypted = cipher.doFinal(data);
     
                 String msg = new String(decrypted, "UTF-8");
-                System.out.println("Server received cleartext "+msg);
+                System.out.println("\n<-------------------------------------->");
+                System.out.println("Server received cleartext: "+msg);
     
                 // encrypt response (this is just the decrypted data re-encrypted)
                 cipher.init(Cipher.ENCRYPT_MODE, destinationKey);
                 byte[] encrypted = cipher.doFinal(msg.getBytes());
     
-                System.out.println("Server sending ciphertext "+Util.bytesToHex(encrypted));
+                System.out.println("Server sending ciphertext: "+Util.bytesToHex(encrypted));
+                System.out.println("<-------------------------------------->\n");
                 out.write(encrypted);
                 out.flush();
             }

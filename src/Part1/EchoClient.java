@@ -49,7 +49,7 @@ public class EchoClient {
      */
     public String sendMessage(String msg, PublicKey destinationKey, PrivateKey sourceKey) {
         try {
-            System.out.println("Client sending cleartext "+msg);
+            //System.out.println("Client sending cleartext "+msg);
             byte[] data = msg.getBytes("UTF-8");
             
             // encrypt data
@@ -57,18 +57,22 @@ public class EchoClient {
             cipher.init(Cipher.ENCRYPT_MODE, destinationKey);
 
             byte[] encrypted = cipher.doFinal(data);
-
-            System.out.println("Client sending ciphertext "+Util.bytesToHex(encrypted));
+            
+            System.out.println("\n<-------------------------------------->");
+            System.out.println("Client sending ciphertext: "+Util.bytesToHex(encrypted));
             out.write(encrypted);
             out.flush();
-            in.read(data);
+
+            byte[] resData = new byte[256];
+            in.read(resData);
             
             // decrypt data
             cipher.init(Cipher.DECRYPT_MODE, sourceKey);
-            byte[] decrypted = cipher.doFinal(data);
+            byte[] decrypted = cipher.doFinal(resData);
 
             String reply = new String(decrypted, "UTF-8");
-            System.out.println("Server returned cleartext "+reply);
+            System.out.println("Server returned cleartext: "+reply);
+            System.out.println("<-------------------------------------->\n");
             return reply;
         } catch (Exception e) {
             System.out.println(e.getMessage());
@@ -131,9 +135,9 @@ public class EchoClient {
         client.startConnection("127.0.0.1", 4444);
 
         client.sendMessage("12345678", serverPublicKey, keyPair.getPrivate());
-        //client.sendMessage("ABCDEFGH", serverPublicKey, keyPair.getPrivate());
-        //client.sendMessage("87654321", serverPublicKey, keyPair.getPrivate());
-        //client.sendMessage("HGFEDCBA", serverPublicKey, keyPair.getPrivate());
+        client.sendMessage("ABCDEFGH", serverPublicKey, keyPair.getPrivate());
+        client.sendMessage("87654321", serverPublicKey, keyPair.getPrivate());
+        client.sendMessage("HGFEDCBA", serverPublicKey, keyPair.getPrivate());
         client.stopConnection();
     }
 }
