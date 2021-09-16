@@ -8,6 +8,7 @@ import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.Signature;
 import java.security.spec.EncodedKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
@@ -55,24 +56,40 @@ public class EchoClient {
             // encrypt data
             Cipher cipher = Cipher.getInstance(CIPHER);
             cipher.init(Cipher.ENCRYPT_MODE, destinationKey);
-
-            byte[] encrypted = cipher.doFinal(data);
+            cipher.update(data);
+            byte[] encrypted = cipher.doFinal();
             
-            System.out.println("\n<-------------------------------------->");
-            System.out.println("Client sending ciphertext: "+Util.bytesToHex(encrypted));
+            // Sign the encrypted text for authentication
+            Signature sig = Signature.getInstance(HASH_ALGORITHM);
+            sig.initSign(sourceKey);
+            sig.update(encrypted);
+            byte [] signatureBytes = sig.sign();
+
+            // Send Message
             out.write(encrypted);
+            out.write(signatureBytes);
             out.flush();
 
-            byte[] resData = new byte[256];
+            // Read Response message
+            byte[] resData = new byte[256], signature = new byte[256];
             in.read(resData);
+            in.read(signature);
+
+            // Authenticate
+            sig.initVerify(destinationKey);
+            sig.update(resData);
+            if (!sig.verify(signature)) {
+                throw new SecurityException("Authentication failed Signature does not match");
+            }
             
             // decrypt data
             cipher.init(Cipher.DECRYPT_MODE, sourceKey);
             byte[] decrypted = cipher.doFinal(resData);
 
             String reply = new String(decrypted, "UTF-8");
-            System.out.println("Server returned cleartext: "+reply);
-            System.out.println("<-------------------------------------->\n");
+
+            this.outputToConsole(encrypted, signature, msg);
+
             return reply;
         } catch (Exception e) {
             System.out.println(e.getMessage());
@@ -106,6 +123,19 @@ public class EchoClient {
         return keyFactory.generatePublic(publicKeySpec);
     }
 
+    private void outputToConsole(byte[] ciphertext, byte[] signature, String plaintext) {
+        System.out.println("\n###############################################");
+        System.out.println("\n<-------------------------------------->");
+        System.out.println("Client sending ciphertext: "+Base64.getEncoder().encodeToString(ciphertext));
+        System.out.println("\n<-------------------------------------->");
+        System.out.println("Client sending signature: "+Base64.getEncoder().encodeToString(signature));
+        System.out.println("\n<-------------------------------------->");
+        System.out.println("Response received");
+        System.out.println("Authentication Successful");
+        System.out.println("Server returned cleartext: "+plaintext);
+        System.out.println("\n###############################################");
+    }
+
     public static void main(String[] args) throws Exception {
         EchoClient client = new EchoClient();
 
@@ -130,7 +160,7 @@ public class EchoClient {
             throw new Exception("Invalid Public Key specified");
         }
 
-        System.out.println("<-------------------------------------->\n");
+        System.out.println("<-------------------------------------->");
 
         client.startConnection("127.0.0.1", 4444);
 
