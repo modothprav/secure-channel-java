@@ -9,6 +9,8 @@ import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.Signature;
+import java.security.SignatureException;
 import java.security.spec.EncodedKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
@@ -40,9 +42,10 @@ public class EchoServer {
      * @throws InvalidKeyException
      * @throws BadPaddingException
      * @throws IllegalBlockSizeException
+     * @throws SignatureException
      */
     public void start(int port, PublicKey destinationKey, PrivateKey sourceKey) throws NoSuchAlgorithmException, 
-    NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+    NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, SignatureException {
         try {
             serverSocket = new ServerSocket(port);
             clientSocket = serverSocket.accept();
@@ -51,6 +54,18 @@ public class EchoServer {
             byte[] data = new byte[256];
             int numBytes;
             while ((numBytes = in.read(data)) != -1) {
+                // Authenticate
+                Signature sig = Signature.getInstance(HASH_ALGORITHM);
+                sig.initVerify(destinationKey);
+                sig.update(data);
+
+                byte[] signatureBytes = new byte[256]; 
+                in.read(signatureBytes);
+
+                if (!sig.verify(signatureBytes)) {
+                    throw new SecurityException("Authentication failed Signature does not match");
+                }
+
                 // decrypt data
                 Cipher cipher = Cipher.getInstance(CIPHER);
                 cipher.init(Cipher.DECRYPT_MODE, sourceKey);
@@ -58,6 +73,7 @@ public class EchoServer {
     
                 String msg = new String(decrypted, "UTF-8");
                 System.out.println("\n<-------------------------------------->");
+                System.out.println("Authentication Passed");
                 System.out.println("Server received cleartext: "+msg);
     
                 // encrypt response (this is just the decrypted data re-encrypted)

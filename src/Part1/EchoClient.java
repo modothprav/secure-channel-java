@@ -8,6 +8,7 @@ import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.Signature;
 import java.security.spec.EncodedKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
@@ -56,11 +57,21 @@ public class EchoClient {
             Cipher cipher = Cipher.getInstance(CIPHER);
             cipher.init(Cipher.ENCRYPT_MODE, destinationKey);
 
-            byte[] encrypted = cipher.doFinal(data);
+            cipher.update(data);
+            byte[] encrypted = cipher.doFinal();
             
+            // Sign the original text for authentication
+            Signature sig = Signature.getInstance(HASH_ALGORITHM);
+            sig.initSign(sourceKey);
+            sig.update(encrypted);
+            byte [] signatureBytes = sig.sign();
+            System.out.println("Signature Length: " + signatureBytes.length);
+
             System.out.println("\n<-------------------------------------->");
             System.out.println("Client sending ciphertext: "+Util.bytesToHex(encrypted));
             out.write(encrypted);
+            System.out.println("Client sending Signature... ");
+            out.write(signatureBytes);
             out.flush();
 
             byte[] resData = new byte[256];
