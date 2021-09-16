@@ -2,6 +2,7 @@ package Part1;
 
 import java.io.*;
 import java.net.*;
+import java.security.InvalidKeyException;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -117,10 +118,27 @@ public class EchoClient {
         return kpg.genKeyPair();
     }
 
-    private PublicKey getPublicKey(byte[] publicKey) throws InvalidKeySpecException, NoSuchAlgorithmException {
+    private PublicKey genPublicKey(byte[] publicKey) throws InvalidKeySpecException, NoSuchAlgorithmException {
         EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(publicKey);
         KeyFactory keyFactory = KeyFactory.getInstance(ALGORITHM);
         return keyFactory.generatePublic(publicKeySpec);
+    }
+
+    private PublicKey getPublicKey() throws InvalidKeyException {
+        System.out.println("<-------------------------------------->");
+        System.out.println("Enter Destination Public Key: ");
+        Scanner sc = new Scanner(System.in);
+        String key = sc.next();
+        sc.close();
+        PublicKey publicKey = null;
+        try {
+            byte[] publicKeyBytes = Base64.getDecoder().decode(key.getBytes());
+            publicKey = this.genPublicKey(publicKeyBytes);
+        } catch (Exception e) {
+            throw new InvalidKeyException("Invalid Public Key specified");
+        }
+        System.out.println("<-------------------------------------->\n");
+        return publicKey;
     }
 
     private void outputToConsole(byte[] ciphertext, byte[] signature, String plaintext) {
@@ -147,23 +165,9 @@ public class EchoClient {
         System.out.println("<-------------------------------------->\n");
 
         // Get Server Public Key
-        System.out.println("<-------------------------------------->");
-        System.out.println("Enter Destination Public Key: ");
-        Scanner sc = new Scanner(System.in);
-        String key = sc.next();
-        sc.close();
-        PublicKey serverPublicKey = null;
-        try {
-            byte[] publicKey = Base64.getDecoder().decode(key.getBytes());
-            serverPublicKey = client.getPublicKey(publicKey);
-        } catch (Exception e) {
-            throw new Exception("Invalid Public Key specified");
-        }
-
-        System.out.println("<-------------------------------------->");
+        PublicKey serverPublicKey = client.getPublicKey();
 
         client.startConnection("127.0.0.1", 4444);
-
         client.sendMessage("12345678", serverPublicKey, keyPair.getPrivate());
         client.sendMessage("ABCDEFGH", serverPublicKey, keyPair.getPrivate());
         client.sendMessage("87654321", serverPublicKey, keyPair.getPrivate());
