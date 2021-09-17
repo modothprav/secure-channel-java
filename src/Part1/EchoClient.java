@@ -2,22 +2,12 @@ package Part1;
 
 import java.io.*;
 import java.net.*;
-import java.security.InvalidKeyException;
-import java.security.KeyFactory;
 import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.Signature;
-import java.security.spec.EncodedKeySpec;
-import java.security.spec.InvalidKeySpecException;
-import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
 import java.util.Base64;
-import java.util.Scanner;
 
-import javax.crypto.Cipher;
 
 public class EchoClient {
 
@@ -55,47 +45,31 @@ public class EchoClient {
             //System.out.println("Client sending cleartext "+msg);
             byte[] data = msg.getBytes("UTF-8");
             
-            // encrypt data
-            Cipher cipher = Cipher.getInstance(CIPHER);
-            cipher.init(Cipher.ENCRYPT_MODE, destinationKey);
-            cipher.update(data);
-            byte[] encrypted = cipher.doFinal();
-            
-            // Sign the encrypted text for authentication
-            Signature sig = Signature.getInstance(HASH_ALGORITHM);
-            sig.initSign(sourceKey);
-            sig.update(encrypted);
-            byte [] signatureBytes = sig.sign();
+            // encrypt and sign encrypted data
+            byte[] encrypted = Util.encrypt(data, destinationKey, CIPHER);
+            byte [] signatureBytes = Util.sign(encrypted, sourceKey, HASH_ALGORITHM);
 
-            // Create request data
-            byte[] reqData = this.mergeArrays(encrypted, signatureBytes);
-
-            // Send Message
+            // Create request data and send to server
+            byte[] reqData = Util.mergeArrays(encrypted, signatureBytes);
             out.write(reqData);
             out.flush();
 
-            // Read Response message
+            // Read Response message and extract ciphertext and signature
             byte[] resData = new byte[512];
             in.read(resData);
-
             int dataSize = resData.length;
             byte [] ciphertext = Arrays.copyOfRange(resData, 0, (dataSize + 1) / 2);
             byte [] signature = Arrays.copyOfRange(resData, (dataSize + 1) / 2, dataSize);
 
-            // Authenticate
-            sig.initVerify(destinationKey);
-            sig.update(ciphertext);
-            if (!sig.verify(signature)) {
-                throw new SecurityException("Authentication failed Signature does not match");
+            // Authenticate then decrypt ciphertext
+            if (!Util.verify(ciphertext, signature, destinationKey, HASH_ALGORITHM)) {
+                throw new SecurityException("Authentication FAILED - Signature does not match");
             }
-            
-            // decrypt data
-            cipher.init(Cipher.DECRYPT_MODE, sourceKey);
-            byte[] decrypted = cipher.doFinal(ciphertext);
+            byte[] decrypted = Util.decrypt(ciphertext, sourceKey, CIPHER);
 
             String reply = new String(decrypted, "UTF-8");
 
-            this.outputToConsole(encrypted, signature, msg);
+            this.outputToConsole(reqData, msg);
 
             return reply;
         } catch (Exception e) {
@@ -118,48 +92,10 @@ public class EchoClient {
         }
     }
 
-    private byte[] mergeArrays(byte[] ciphertext, byte[] signature) throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        out.write(ciphertext);
-        out.write(signature);
-        return out.toByteArray();
-    }
-
-    private KeyPair generateKeys() throws NoSuchAlgorithmException{
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance(ALGORITHM);
-        kpg.initialize(2048);
-        return kpg.genKeyPair();
-    }
-
-    private PublicKey genPublicKey(byte[] publicKey) throws InvalidKeySpecException, NoSuchAlgorithmException {
-        EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(publicKey);
-        KeyFactory keyFactory = KeyFactory.getInstance(ALGORITHM);
-        return keyFactory.generatePublic(publicKeySpec);
-    }
-
-    private PublicKey getPublicKey() throws InvalidKeyException {
-        System.out.println("<-------------------------------------->");
-        System.out.println("Enter Destination Public Key: ");
-        Scanner sc = new Scanner(System.in);
-        String key = sc.next();
-        sc.close();
-        PublicKey publicKey = null;
-        try {
-            byte[] publicKeyBytes = Base64.getDecoder().decode(key.getBytes());
-            publicKey = this.genPublicKey(publicKeyBytes);
-        } catch (Exception e) {
-            throw new InvalidKeyException("Invalid Public Key specified");
-        }
-        System.out.println("<-------------------------------------->\n");
-        return publicKey;
-    }
-
-    private void outputToConsole(byte[] ciphertext, byte[] signature, String plaintext) {
+    private void outputToConsole(byte[] message, String plaintext) {
         System.out.println("\n###############################################");
         System.out.println("\n<-------------------------------------->");
-        System.out.println("Client sending ciphertext: "+Base64.getEncoder().encodeToString(ciphertext));
-        System.out.println("\n<-------------------------------------->");
-        System.out.println("Client sending signature: "+Base64.getEncoder().encodeToString(signature));
+        System.out.println("Client sending ciphertext: "+Base64.getEncoder().encodeToString(message));
         System.out.println("\n<-------------------------------------->");
         System.out.println("Response received");
         System.out.println("Authentication Successful");
@@ -171,20 +107,17 @@ public class EchoClient {
         EchoClient client = new EchoClient();
 
         // Generate Client Keypair and print public key
-        KeyPair keyPair = client.generateKeys();
-        byte[] clientPublicKey = keyPair.getPublic().getEncoded();
-        System.out.println("\n<-------------------------------------->");
-        System.out.println("Client Public Key: " +Base64.getEncoder().encodeToString(clientPublicKey));
-        System.out.println("<-------------------------------------->\n");
+        KeyPair keyPair = Util.generateKeys(client.ALGORITHM);
+        Util.outputPublicKey(keyPair.getPublic(), "Client");
 
         // Get Server Public Key
-        PublicKey serverPublicKey = client.getPublicKey();
+        PublicKey serverPublicKey = Util.getPublicKey(client.ALGORITHM);
 
         client.startConnection("127.0.0.1", 4444);
         client.sendMessage("12345678", serverPublicKey, keyPair.getPrivate());
-        //client.sendMessage("ABCDEFGH", serverPublicKey, keyPair.getPrivate());
-        //client.sendMessage("87654321", serverPublicKey, keyPair.getPrivate());
-        //client.sendMessage("HGFEDCBA", serverPublicKey, keyPair.getPrivate());
+        client.sendMessage("ABCDEFGH", serverPublicKey, keyPair.getPrivate());
+        client.sendMessage("87654321", serverPublicKey, keyPair.getPrivate());
+        client.sendMessage("HGFEDCBA", serverPublicKey, keyPair.getPrivate());
         client.stopConnection();
     }
 }
