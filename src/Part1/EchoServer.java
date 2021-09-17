@@ -54,12 +54,10 @@ public class EchoServer {
                 byte [] ciphertext = Arrays.copyOfRange(data, 0, (dataSize + 1) / 2);
                 byte [] signatureBytes = Arrays.copyOfRange(data, (dataSize + 1) / 2, dataSize);
 
-                // Authenticate
+                // Authenticate then if passed decrypt data
                 if (!Util.verify(ciphertext, signatureBytes, destinationKey, HASH_ALGORITHM)) {
                     throw new SecurityException("Authentication FAILED - Signature does not match");
                 }
-
-                // decrypt data
                 byte[] decrypted = Util.decrypt(ciphertext, sourceKey, CIPHER);
                 String msg = new String(decrypted, "UTF-8");
 
@@ -81,6 +79,14 @@ public class EchoServer {
 
     }
 
+    /**
+     * Outputs the request received from the client and the response sent by the 
+     * server on the console. Also informs that authentication was successful.
+     * Sent messages are displayed as ciphertext whilereceived messages are 
+     * displayed as plaintext.
+     * @param message The message that is being sent to the client (ciphertext)
+     * @param plaintext The decrypted message received by the client
+     */
     private void outputToConsole(byte[] message, String plaintext) {
         System.out.println("\n###############################################");
         System.out.println("\n<-------------------------------------->");

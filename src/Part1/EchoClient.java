@@ -92,6 +92,14 @@ public class EchoClient {
         }
     }
 
+    /**
+     * Outputs the request which is sent to the server and the response
+     * received back from the server. Also informs that authentication 
+     * was successful. Sent messages are displayed as ciphertext while
+     * received messages are displayed as plaintext.
+     * @param message The message being sent to the server (ciphertext)
+     * @param plaintext The message received from the server
+     */
     private void outputToConsole(byte[] message, String plaintext) {
         System.out.println("\n###############################################");
         System.out.println("\n<-------------------------------------->");
