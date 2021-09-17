@@ -14,6 +14,7 @@ import java.security.SignatureException;
 import java.security.spec.EncodedKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Scanner;
 
@@ -51,15 +52,19 @@ public class EchoServer {
             clientSocket = serverSocket.accept();
             out = new DataOutputStream(clientSocket.getOutputStream());
             in = new DataInputStream(clientSocket.getInputStream());
-            byte[] data = new byte[256];
+            byte[] data = new byte[512];
             int numBytes;
             while ((numBytes = in.read(data)) != -1) {
+
+                // Split content into signature and ciphertext
+                int dataSize = data.length;
+                byte [] ciphertext = Arrays.copyOfRange(data, 0, (dataSize + 1) / 2);
+                byte [] signatureBytes = Arrays.copyOfRange(data, (dataSize + 1) / 2, dataSize);
+
                 // Authenticate
                 Signature sig = Signature.getInstance(HASH_ALGORITHM);
                 sig.initVerify(destinationKey);
-                sig.update(data);
-                byte[] signatureBytes = new byte[256]; 
-                in.read(signatureBytes);
+                sig.update(ciphertext); 
                 if (!sig.verify(signatureBytes)) {
                     throw new SecurityException("Authentication failed Signature does not match");
                 }
@@ -67,7 +72,7 @@ public class EchoServer {
                 // decrypt data
                 Cipher cipher = Cipher.getInstance(CIPHER);
                 cipher.init(Cipher.DECRYPT_MODE, sourceKey);
-                byte[] decrypted = cipher.doFinal(data);
+                byte[] decrypted = cipher.doFinal(ciphertext);
     
                 String msg = new String(decrypted, "UTF-8");
                 // encrypt response (this is just the decrypted data re-encrypted)
@@ -79,8 +84,8 @@ public class EchoServer {
                 sig.update(encrypted);
                 signatureBytes = sig.sign();
 
-                out.write(encrypted);
-                out.write(signatureBytes);
+                byte[] resData = this.mergeArrays(encrypted, signatureBytes);
+                out.write(resData);
                 out.flush();
 
                 this.outputToConsole(encrypted, signatureBytes, msg);
@@ -90,6 +95,13 @@ public class EchoServer {
             System.out.println(e.getMessage());
         }
 
+    }
+
+    private byte[] mergeArrays(byte[] ciphertext, byte[] signature) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        out.write(ciphertext);
+        out.write(signature);
+        return out.toByteArray();
     }
 
     private KeyPair generateKeys() throws NoSuchAlgorithmException{

@@ -13,6 +13,7 @@ import java.security.Signature;
 import java.security.spec.EncodedKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Scanner;
 
@@ -66,26 +67,31 @@ public class EchoClient {
             sig.update(encrypted);
             byte [] signatureBytes = sig.sign();
 
+            // Create request data
+            byte[] reqData = this.mergeArrays(encrypted, signatureBytes);
+
             // Send Message
-            out.write(encrypted);
-            out.write(signatureBytes);
+            out.write(reqData);
             out.flush();
 
             // Read Response message
-            byte[] resData = new byte[256], signature = new byte[256];
+            byte[] resData = new byte[512];
             in.read(resData);
-            in.read(signature);
+
+            int dataSize = resData.length;
+            byte [] ciphertext = Arrays.copyOfRange(resData, 0, (dataSize + 1) / 2);
+            byte [] signature = Arrays.copyOfRange(resData, (dataSize + 1) / 2, dataSize);
 
             // Authenticate
             sig.initVerify(destinationKey);
-            sig.update(resData);
+            sig.update(ciphertext);
             if (!sig.verify(signature)) {
                 throw new SecurityException("Authentication failed Signature does not match");
             }
             
             // decrypt data
             cipher.init(Cipher.DECRYPT_MODE, sourceKey);
-            byte[] decrypted = cipher.doFinal(resData);
+            byte[] decrypted = cipher.doFinal(ciphertext);
 
             String reply = new String(decrypted, "UTF-8");
 
@@ -110,6 +116,13 @@ public class EchoClient {
         } catch (IOException e) {
             System.out.println("error when closing");
         }
+    }
+
+    private byte[] mergeArrays(byte[] ciphertext, byte[] signature) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        out.write(ciphertext);
+        out.write(signature);
+        return out.toByteArray();
     }
 
     private KeyPair generateKeys() throws NoSuchAlgorithmException{
@@ -169,9 +182,9 @@ public class EchoClient {
 
         client.startConnection("127.0.0.1", 4444);
         client.sendMessage("12345678", serverPublicKey, keyPair.getPrivate());
-        client.sendMessage("ABCDEFGH", serverPublicKey, keyPair.getPrivate());
-        client.sendMessage("87654321", serverPublicKey, keyPair.getPrivate());
-        client.sendMessage("HGFEDCBA", serverPublicKey, keyPair.getPrivate());
+        //client.sendMessage("ABCDEFGH", serverPublicKey, keyPair.getPrivate());
+        //client.sendMessage("87654321", serverPublicKey, keyPair.getPrivate());
+        //client.sendMessage("HGFEDCBA", serverPublicKey, keyPair.getPrivate());
         client.stopConnection();
     }
 }
