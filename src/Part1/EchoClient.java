@@ -8,9 +8,6 @@ import java.security.PublicKey;
 import java.util.Arrays;
 import java.util.Base64;
 
-import javax.imageio.IIOException;
-
-
 public class EchoClient {
 
     private Socket clientSocket;
