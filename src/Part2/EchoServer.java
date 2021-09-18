@@ -23,7 +23,6 @@ public class EchoServer {
     private DataInputStream in;
     private final String CIPHER = "RSA/ECB/PKCS1Padding";
     private final String HASH_ALGORITHM = "SHA256withRSA";
-    private final String ALGORITHM = "RSA";
 
     /**
      * Create the server socket and wait for a connection.
@@ -115,14 +114,21 @@ public class EchoServer {
     }
 
     public static void main(String[] args) throws Exception{
+        if (args.length < 1) { throw new IllegalArgumentException("Keystore Password wansn't supplied"); }
+
+        char[] password = args[0].toCharArray();
+        Arrays.fill(args, null);
+        
         EchoServer server = new EchoServer();
 
-        // Generate Client Keypair and print public key
-        KeyPair keyPair = Util.getKeyPairFromStore("server", "badpassword".toCharArray());
-        Util.outputPublicKey(keyPair.getPublic(), "Server");
+        // Get Server Keypair from keystore
+        KeyPair keyPair = Util.getKeyPairFromStore("server", password);
 
-        // Prompts the user to enter a public key
-        PublicKey clientPublicKey = Util.getPublicKeyFromStore("client", "badpassword".toCharArray());
+        // Get the client public key from the keystore
+        PublicKey clientPublicKey = Util.getPublicKeyFromStore("client", password);
+
+        // clear password
+        Arrays.fill(password, '\0'); password = null;
 
         server.start(4444, clientPublicKey, keyPair.getPrivate());
     }

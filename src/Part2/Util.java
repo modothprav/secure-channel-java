@@ -8,9 +8,7 @@ import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.security.cert.Certificate;
 import java.security.InvalidKeyException;
-import java.security.KeyFactory;
 import java.security.KeyPair;
-import java.security.KeyPairGenerator;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -20,11 +18,6 @@ import java.security.Signature;
 import java.security.SignatureException;
 import java.security.UnrecoverableEntryException;
 import java.security.cert.CertificateException;
-import java.security.spec.EncodedKeySpec;
-import java.security.spec.InvalidKeySpecException;
-import java.security.spec.X509EncodedKeySpec;
-import java.util.Base64;
-import java.util.Scanner;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -198,72 +191,6 @@ public class Util {
         out.write(signature);
         return out.toByteArray();
     }
-
-    /**
-     * Generates and returns a Keypair object from the given algorithm 
-     * @param algorithm The algorithm used to generate the Keypai object
-     * @return The generated Keypair object
-     * @throws NoSuchAlgorithmException
-     */
-    public static KeyPair generateKeys(String algorithm) throws NoSuchAlgorithmException{
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance(algorithm);
-        kpg.initialize(2048);
-        return kpg.genKeyPair();
-    }
-
-    /**
-     * Generate a public key object from the given publicKey byte array
-     * and algorithm. Uses the KeySpec and KeyFactory classes to create
-     * the public key object.
-     * @param publicKey The byte array containing the public key information
-     * @param algorithm The algorithm used to generate the public key
-     * @return If successful will return a PublicKey object
-     * @throws InvalidKeySpecException
-     * @throws NoSuchAlgorithmException
-     */
-    public static PublicKey genPublicKey(byte[] publicKey, String algorithm) throws 
-    InvalidKeySpecException, NoSuchAlgorithmException {
-        EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(publicKey);
-        KeyFactory keyFactory = KeyFactory.getInstance(algorithm);
-        return keyFactory.generatePublic(publicKeySpec);
-    }
-
-    /**
-     * Outputs a Public key object along with its owner on 
-     * the console in its Base64 encoded format.
-     * @param publicKey The public key object 
-     * @param owner The owner of the public key
-     */
-    public static void outputPublicKey(PublicKey publicKey, String owner) {
-        System.out.println("\n<-------------------------------------->");
-        System.out.println(owner + " Public Key: " +Base64.getEncoder().encodeToString(publicKey.getEncoded()));
-        System.out.println("<-------------------------------------->\n");
-    }
-
-    /**
-     * Prompts the user to enter a public key onto the console. This 
-     * method also uses the helper function (genPublicKey) to generate
-     * a public key from the given input. If successful will return a
-     * public key object
-     * @param algorithm The algorithm used to generate the public key
-     * @return The public key object
-     * @throws InvalidKeyException
-     */
-    public static PublicKey getPublicKey(String algorithm) throws InvalidKeyException {
-        System.out.println("<-------------------------------------->");
-        System.out.println("Enter Destination Public Key: ");
-        Scanner sc = new Scanner(System.in);
-        String key = sc.next();
-        sc.close();
-        PublicKey publicKey = null;
-        try {
-            byte[] publicKeyBytes = Base64.getDecoder().decode(key.getBytes());
-            publicKey = genPublicKey(publicKeyBytes, algorithm);
-        } catch (Exception e) {
-            throw new InvalidKeyException("Invalid Public Key specified");
-        }
-        System.out.println("<-------------------------------------->\n");
-        return publicKey;
-    }
+  
 }
 

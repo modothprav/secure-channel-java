@@ -114,14 +114,22 @@ public class EchoClient {
     }
 
     public static void main(String[] args) throws Exception {
+
+        if (args.length < 1) { throw new IllegalArgumentException("Keystore Password wansn't supplied"); }
+
+        char[] password = args[0].toCharArray();
+        Arrays.fill(args, null);
+
         EchoClient client = new EchoClient();
 
-        // Generate Client Keypair and print public key
-        KeyPair keyPair = Util.getKeyPairFromStore("client", "badpassword".toCharArray());
-        Util.outputPublicKey(keyPair.getPublic(), "Client");
+        // Get Client Keypair from Keystore
+        KeyPair keyPair = Util.getKeyPairFromStore("client", password);
 
         // Get Server Public Key
-        PublicKey serverPublicKey = Util.getPublicKeyFromStore("server", "badpassword".toCharArray());
+        PublicKey serverPublicKey = Util.getPublicKeyFromStore("server", password);
+
+        // Clear passsword
+        Arrays.fill(password, '\0'); password = null;
 
         try {
             client.startConnection("127.0.0.1", 4444);
@@ -131,7 +139,7 @@ public class EchoClient {
             client.sendMessage("HGFEDCBA", serverPublicKey, keyPair.getPrivate());
             client.stopConnection();
         } catch (NullPointerException e) {
-            throw new IOException("Connection ERROR - Check if Server running and connection to Server");
+            throw new IOException("Connection ERROR - Check if Server running and the connection to Server");
         }
         
     }
