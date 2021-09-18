@@ -8,6 +8,8 @@ import java.security.PublicKey;
 import java.util.Arrays;
 import java.util.Base64;
 
+import javax.imageio.IIOException;
+
 
 public class EchoClient {
 
@@ -23,6 +25,7 @@ public class EchoClient {
      *
      * @param ip the address of the server
      * @param port port used by the server
+     * @throws IOException
      *
      */
     public void startConnection(String ip, int port) {
@@ -89,6 +92,8 @@ public class EchoClient {
             clientSocket.close();
         } catch (IOException e) {
             System.out.println("error when closing");
+        } catch (NullPointerException e) {
+            System.out.println("Connection ERROR - Check if Server is listening for connections");
         }
     }
 
@@ -121,11 +126,16 @@ public class EchoClient {
         // Get Server Public Key
         PublicKey serverPublicKey = Util.getPublicKey(client.ALGORITHM);
 
-        client.startConnection("127.0.0.1", 4444);
-        client.sendMessage("12345678", serverPublicKey, keyPair.getPrivate());
-        client.sendMessage("ABCDEFGH", serverPublicKey, keyPair.getPrivate());
-        client.sendMessage("87654321", serverPublicKey, keyPair.getPrivate());
-        client.sendMessage("HGFEDCBA", serverPublicKey, keyPair.getPrivate());
-        client.stopConnection();
+        try {
+            client.startConnection("127.0.0.1", 4444);
+            client.sendMessage("12345678", serverPublicKey, keyPair.getPrivate());
+            client.sendMessage("ABCDEFGH", serverPublicKey, keyPair.getPrivate());
+            client.sendMessage("87654321", serverPublicKey, keyPair.getPrivate());
+            client.sendMessage("HGFEDCBA", serverPublicKey, keyPair.getPrivate());
+            client.stopConnection();
+        } catch (NullPointerException e) {
+            throw new IOException("Connection ERROR - Check if Server running and connection to Server");
+        }
+        
     }
 }
