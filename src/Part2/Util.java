@@ -1,17 +1,25 @@
 package Part2;
 
 import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.security.cert.Certificate;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
+import java.security.UnrecoverableEntryException;
+import java.security.cert.CertificateException;
 import java.security.spec.EncodedKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
@@ -57,6 +65,37 @@ public class Util {
         }
         return s;
     }
+
+    public static KeyPair getKeyPairFromStore(String alias, char[] password) throws 
+    FileNotFoundException, KeyStoreException, IOException, NoSuchAlgorithmException, 
+    CertificateException, UnrecoverableEntryException{
+        InputStream ins = new FileInputStream("Part2/cybr372.jks");
+
+        KeyStore keyStore = KeyStore.getInstance("JKS");
+        keyStore.load(ins, password);
+        KeyStore.PasswordProtection keyPassword = new KeyStore.PasswordProtection(password);
+        KeyStore.PrivateKeyEntry privateKeyEntry = (KeyStore.PrivateKeyEntry) keyStore.getEntry(alias, keyPassword);
+        
+        Certificate cert = keyStore.getCertificate(alias);
+        PublicKey publicKey = cert.getPublicKey();
+        PrivateKey privateKey = privateKeyEntry.getPrivateKey();
+
+        return new KeyPair(publicKey, privateKey);
+    }
+
+    public static PublicKey getPublicKeyFromStore(String alias, char[] password) throws 
+    FileNotFoundException, KeyStoreException, IOException, NoSuchAlgorithmException, 
+    CertificateException {
+        InputStream ins = new FileInputStream("Part2/cybr372.jks");
+
+        KeyStore keyStore = KeyStore.getInstance("JKS");
+        keyStore.load(ins, password);
+        
+        Certificate cert = keyStore.getCertificate(alias);
+        return cert.getPublicKey();
+
+    }
+
 
     /**
      * Performs asymmetric encryption, by using the given public key to encrypt 

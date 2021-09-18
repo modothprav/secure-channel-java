@@ -117,11 +117,11 @@ public class EchoClient {
         EchoClient client = new EchoClient();
 
         // Generate Client Keypair and print public key
-        KeyPair keyPair = Util.generateKeys(client.ALGORITHM);
+        KeyPair keyPair = Util.getKeyPairFromStore("client", "badpassword".toCharArray());
         Util.outputPublicKey(keyPair.getPublic(), "Client");
 
         // Get Server Public Key
-        PublicKey serverPublicKey = Util.getPublicKey(client.ALGORITHM);
+        PublicKey serverPublicKey = Util.getPublicKeyFromStore("server", "badpassword".toCharArray());
 
         try {
             client.startConnection("127.0.0.1", 4444);

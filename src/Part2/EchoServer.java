@@ -118,11 +118,11 @@ public class EchoServer {
         EchoServer server = new EchoServer();
 
         // Generate Client Keypair and print public key
-        KeyPair keyPair = Util.generateKeys(server.ALGORITHM);
+        KeyPair keyPair = Util.getKeyPairFromStore("server", "badpassword".toCharArray());
         Util.outputPublicKey(keyPair.getPublic(), "Server");
 
         // Prompts the user to enter a public key
-        PublicKey clientPublicKey = Util.getPublicKey(server.ALGORITHM);
+        PublicKey clientPublicKey = Util.getPublicKeyFromStore("client", "badpassword".toCharArray());
 
         server.start(4444, clientPublicKey, keyPair.getPrivate());
     }
