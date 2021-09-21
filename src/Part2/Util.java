@@ -59,6 +59,20 @@ public class Util {
         return s;
     }
 
+    /**
+     * Returns a Keypair object conatinig the public and private keys
+     * from the cybr372.jks keystore. Obtains the public key by first
+     * obtaining the certificate and retrieveing it from there.
+     * @param alias The alias the Keypair is registered under
+     * @param password The password for the keystore
+     * @return The KeyPair object
+     * @throws FileNotFoundException
+     * @throws KeyStoreException
+     * @throws IOException
+     * @throws NoSuchAlgorithmException
+     * @throws CertificateException
+     * @throws UnrecoverableEntryException
+     */
     public static KeyPair getKeyPairFromStore(String alias, char[] password) throws 
     FileNotFoundException, KeyStoreException, IOException, NoSuchAlgorithmException, 
     CertificateException, UnrecoverableEntryException{
@@ -76,6 +90,17 @@ public class Util {
         return new KeyPair(publicKey, privateKey);
     }
 
+    /**
+     * Returns the public key of the alias specified from the keystore file
+     * @param alias The alias the public key is registered under
+     * @param password The keystore password
+     * @return The Public Key object
+     * @throws FileNotFoundException
+     * @throws KeyStoreException
+     * @throws IOException
+     * @throws NoSuchAlgorithmException
+     * @throws CertificateException
+     */
     public static PublicKey getPublicKeyFromStore(String alias, char[] password) throws 
     FileNotFoundException, KeyStoreException, IOException, NoSuchAlgorithmException, 
     CertificateException {
