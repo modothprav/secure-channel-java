@@ -17,6 +17,7 @@ import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.security.UnrecoverableEntryException;
+import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
 
 import javax.crypto.BadPaddingException;
@@ -73,15 +74,20 @@ public class Util {
      * @throws CertificateException
      * @throws UnrecoverableEntryException
      */
-    public static KeyPair getKeyPairFromStore(String alias, char[] password) throws 
+    public static KeyPair getKeyPairFromStore(String alias, char[] storePass, char[] keyPass) throws 
     FileNotFoundException, KeyStoreException, IOException, NoSuchAlgorithmException, 
     CertificateException, UnrecoverableEntryException{
         InputStream ins = new FileInputStream("Part2/cybr372.jks");
 
         KeyStore keyStore = KeyStore.getInstance("JKS");
-        keyStore.load(ins, password);
-        KeyStore.PasswordProtection keyPassword = new KeyStore.PasswordProtection(password);
-        KeyStore.PrivateKeyEntry privateKeyEntry = (KeyStore.PrivateKeyEntry) keyStore.getEntry(alias, keyPassword);
+        keyStore.load(ins, storePass);
+        KeyStore.PasswordProtection keyPassword = new KeyStore.PasswordProtection(keyPass);
+        KeyStore.PrivateKeyEntry privateKeyEntry = null;
+        try {
+            privateKeyEntry = (KeyStore.PrivateKeyEntry) keyStore.getEntry(alias, keyPassword);
+        } catch (UnrecoverableKeyException e) {
+            throw new UnrecoverableKeyException("Invaild password specified");
+        }
         
         Certificate cert = keyStore.getCertificate(alias);
         PublicKey publicKey = cert.getPublicKey();

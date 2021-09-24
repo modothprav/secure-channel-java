@@ -15,7 +15,7 @@ public class EchoClient {
     private DataInputStream in;
     private final String CIPHER = "RSA/ECB/PKCS1Padding";
     private final String HASH_ALGORITHM = "SHA256withRSA";
-    private final String ALGORITHM = "RSA";
+    private final static String ERROR_MSG = "Valid command: java Part2.EchoClient <Store password> <Key password>";
 
     /**
      * Setup the two way streams.
@@ -115,21 +115,25 @@ public class EchoClient {
 
     public static void main(String[] args) throws Exception {
 
-        if (args.length < 1) { throw new IllegalArgumentException("Keystore Password wansn't supplied"); }
+        if (args.length < 2) { throw new IllegalArgumentException("Not enough arguments specified\n" + ERROR_MSG); }
 
-        char[] password = args[0].toCharArray();
+        char[] storePass = args[0].toCharArray();
+        char[] keyPass = args[1].toCharArray();
         Arrays.fill(args, null);
 
         EchoClient client = new EchoClient();
 
         // Get Client Keypair from Keystore
-        KeyPair keyPair = Util.getKeyPairFromStore("client", password);
+        KeyPair keyPair = Util.getKeyPairFromStore("client", storePass, keyPass);
+
+        // Clear key password
+        Arrays.fill(keyPass, '\0'); keyPass = null;
 
         // Get Server Public Key
-        PublicKey serverPublicKey = Util.getPublicKeyFromStore("server", password);
+        PublicKey serverPublicKey = Util.getPublicKeyFromStore("server", storePass);
 
-        // Clear passsword
-        Arrays.fill(password, '\0'); password = null;
+        // Clear store password
+        Arrays.fill(storePass, '\0'); storePass = null;
 
         try {
             client.startConnection("127.0.0.1", 4444);
