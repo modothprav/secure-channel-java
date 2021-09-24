@@ -73,14 +73,14 @@ public class Util {
      * @throws CertificateException
      * @throws UnrecoverableEntryException
      */
-    public static KeyPair getKeyPairFromStore(String alias, char[] password) throws 
+    public static KeyPair getKeyPairFromStore(String alias, char[] storePass, char[] keyPass) throws 
     FileNotFoundException, KeyStoreException, IOException, NoSuchAlgorithmException, 
     CertificateException, UnrecoverableEntryException{
         InputStream ins = new FileInputStream("Part2/cybr372.jks");
 
         KeyStore keyStore = KeyStore.getInstance("JKS");
-        keyStore.load(ins, password);
-        KeyStore.PasswordProtection keyPassword = new KeyStore.PasswordProtection(password);
+        keyStore.load(ins, storePass);
+        KeyStore.PasswordProtection keyPassword = new KeyStore.PasswordProtection(keyPass);
         KeyStore.PrivateKeyEntry privateKeyEntry = (KeyStore.PrivateKeyEntry) keyStore.getEntry(alias, keyPassword);
         
         Certificate cert = keyStore.getCertificate(alias);

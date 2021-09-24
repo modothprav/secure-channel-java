@@ -23,6 +23,7 @@ public class EchoServer {
     private DataInputStream in;
     private final String CIPHER = "RSA/ECB/PKCS1Padding";
     private final String HASH_ALGORITHM = "SHA256withRSA";
+    private static final String ERROR_MSG = "Valid command: java Part2.EchoServer <store password> <keypassword>";
 
     /**
      * Create the server socket and wait for a connection.
@@ -114,21 +115,25 @@ public class EchoServer {
     }
 
     public static void main(String[] args) throws Exception{
-        if (args.length < 1) { throw new IllegalArgumentException("Keystore Password wansn't supplied"); }
+        if (args.length < 2) { throw new IllegalArgumentException("Not enough arguments specified\n" + ERROR_MSG); }
 
-        char[] password = args[0].toCharArray();
+        char[] storePass = args[0].toCharArray();
+        char[] keyPass = args[1].toCharArray();
         Arrays.fill(args, null);
         
         EchoServer server = new EchoServer();
 
         // Get Server Keypair from keystore
-        KeyPair keyPair = Util.getKeyPairFromStore("server", password);
+        KeyPair keyPair = Util.getKeyPairFromStore("server", storePass, keyPass);
+
+        // clear key password
+        Arrays.fill(keyPass, '\0'); keyPass = null;
 
         // Get the client public key from the keystore
-        PublicKey clientPublicKey = Util.getPublicKeyFromStore("client", password);
+        PublicKey clientPublicKey = Util.getPublicKeyFromStore("client", storePass);
 
-        // clear password
-        Arrays.fill(password, '\0'); password = null;
+        // clear store password
+        Arrays.fill(storePass, '\0'); storePass = null;
 
         server.start(4444, clientPublicKey, keyPair.getPrivate());
     }
