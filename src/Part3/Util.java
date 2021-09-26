@@ -14,6 +14,7 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.security.UnrecoverableEntryException;
@@ -23,7 +24,11 @@ import java.security.cert.CertificateException;
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.KeyGenerator;
+import javax.crypto.Mac;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 /**
  *
@@ -118,6 +123,20 @@ public class Util {
         Certificate cert = keyStore.getCertificate(alias);
         return cert.getPublicKey();
 
+    }
+
+    public static SecretKey genMasterKey(String alg) throws NoSuchAlgorithmException {
+        SecureRandom secureRandom = new SecureRandom();
+        KeyGenerator keyGen = KeyGenerator.getInstance("AES");
+        keyGen.init(256, secureRandom);
+        return keyGen.generateKey();
+    }
+
+    public static byte[] genSymmetricKey(String phrase, SecretKey key) throws NoSuchAlgorithmException, InvalidKeyException {
+        SecretKeySpec keySpec = new SecretKeySpec(key.getEncoded(), "HmacSHA256");
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(keySpec);
+        return mac.doFinal(phrase.getBytes());
     }
 
 

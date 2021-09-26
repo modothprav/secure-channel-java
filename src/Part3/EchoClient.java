@@ -8,6 +8,8 @@ import java.security.PublicKey;
 import java.util.Arrays;
 import java.util.Base64;
 
+import javax.crypto.SecretKey;
+
 public class EchoClient {
 
     private Socket clientSocket;
@@ -40,10 +42,10 @@ public class EchoClient {
      *
      * @param msg the message to send
      */
-    public String sendMessage(String msg, PublicKey destinationKey, PrivateKey sourceKey) {
+    public String sendMessage(byte[] data, PublicKey destinationKey, PrivateKey sourceKey) {
         try {
             //System.out.println("Client sending cleartext "+msg);
-            byte[] data = msg.getBytes("UTF-8");
+            //byte[] data = msg.getBytes("UTF-8");
             
             // encrypt and sign encrypted data
             byte[] encrypted = Util.encrypt(data, destinationKey, CIPHER);
@@ -69,7 +71,7 @@ public class EchoClient {
 
             String reply = new String(decrypted, "UTF-8");
 
-            this.outputToConsole(reqData, msg);
+            this.outputToConsole(reqData, Base64.getEncoder().encodeToString(data));
 
             return reply;
         } catch (Exception e) {
@@ -135,13 +137,15 @@ public class EchoClient {
         // Clear store password
         Arrays.fill(storePass, '\0'); storePass = null;
 
+        SecretKey masterKey = Util.genMasterKey("AES");
+
         try {
             client.startConnection("127.0.0.1", 4444);
-            client.sendMessage("12345678", serverPublicKey, keyPair.getPrivate());
-            client.sendMessage("ABCDEFGH", serverPublicKey, keyPair.getPrivate());
-            client.sendMessage("87654321", serverPublicKey, keyPair.getPrivate());
-            client.sendMessage("HGFEDCBA", serverPublicKey, keyPair.getPrivate());
-            client.stopConnection();
+            client.sendMessage(masterKey.getEncoded(), serverPublicKey, keyPair.getPrivate());
+            //client.sendMessage("ABCDEFGH", serverPublicKey, keyPair.getPrivate());
+            //client.sendMessage("87654321", serverPublicKey, keyPair.getPrivate());
+            //client.sendMessage("HGFEDCBA", serverPublicKey, keyPair.getPrivate());
+            //client.stopConnection();
         } catch (NullPointerException e) {
             throw new IOException("Connection ERROR - Check if Server running and the connection to Server");
         }

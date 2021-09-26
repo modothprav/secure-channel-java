@@ -59,7 +59,8 @@ public class EchoServer {
                     throw new SecurityException("Authentication FAILED - Signature does not match");
                 }
                 byte[] decrypted = Util.decrypt(ciphertext, sourceKey, CIPHER);
-                String msg = new String(decrypted, "UTF-8");
+
+                String msg = Base64.getEncoder().encodeToString(decrypted);
 
                 // Ecnrypt message and sign the ciphertext
                 byte[] encrypted = Util.encrypt(msg.getBytes(), destinationKey, CIPHER);
