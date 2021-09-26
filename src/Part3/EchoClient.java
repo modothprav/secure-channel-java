@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.Base64;
 
 import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 public class EchoClient {
 
@@ -42,7 +43,7 @@ public class EchoClient {
      *
      * @param msg the message to send
      */
-    public String sendMessage(byte[] data, PublicKey destinationKey, PrivateKey sourceKey) {
+    public String sendMasterKey(byte[] data, PublicKey destinationKey, PrivateKey sourceKey) {
         try {
             //System.out.println("Client sending cleartext "+msg);
             //byte[] data = msg.getBytes("UTF-8");
@@ -68,6 +69,8 @@ public class EchoClient {
                 throw new SecurityException("Authentication FAILED - Signature does not match");
             }
             byte[] decrypted = Util.decrypt(ciphertext, sourceKey, CIPHER);
+
+            // TO DO: Verify if the received message is also the master key
 
             String reply = new String(decrypted, "UTF-8");
 
@@ -141,7 +144,7 @@ public class EchoClient {
 
         try {
             client.startConnection("127.0.0.1", 4444);
-            client.sendMessage(masterKey.getEncoded(), serverPublicKey, keyPair.getPrivate());
+            client.sendMasterKey(masterKey.getEncoded(), serverPublicKey, keyPair.getPrivate());
             //client.sendMessage("ABCDEFGH", serverPublicKey, keyPair.getPrivate());
             //client.sendMessage("87654321", serverPublicKey, keyPair.getPrivate());
             //client.sendMessage("HGFEDCBA", serverPublicKey, keyPair.getPrivate());

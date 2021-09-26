@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.security.cert.Certificate;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.KeyStore;
@@ -28,6 +29,7 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.Mac;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 /**
@@ -132,13 +134,45 @@ public class Util {
         return keyGen.generateKey();
     }
 
-    public static byte[] genSymmetricKey(String phrase, SecretKey key) throws NoSuchAlgorithmException, InvalidKeyException {
+    public static SecretKey genSymmetricKey(String phrase, SecretKey key) throws NoSuchAlgorithmException, InvalidKeyException {
         SecretKeySpec keySpec = new SecretKeySpec(key.getEncoded(), "HmacSHA256");
         Mac mac = Mac.getInstance("HmacSHA256");
         mac.init(keySpec);
-        return mac.doFinal(phrase.getBytes());
+        byte[] keyBytes = mac.doFinal(phrase.getBytes());
+        return new SecretKeySpec(keyBytes, "AES");
     }
 
+    public static State initChannel(SecretKey masterKey, String role) throws InvalidKeyException, NoSuchAlgorithmException {
+        if (!role.equals("client") && !role.equals("server")) { throw new IllegalArgumentException("Invalid Role specified, must be 'client' or 'server'"); }
+        // Generate Send and receive keys
+        SecretKey keySendEnc = genSymmetricKey("Client to Server", masterKey);
+        SecretKey keyReceiveEnc = genSymmetricKey("Server to Client", masterKey);
+
+        // Swap send and receive keys if role is server
+        if (role.equals("client")) {
+            return new State(keySendEnc, keyReceiveEnc);
+        } else {
+            return new State(keyReceiveEnc, keySendEnc);
+        }
+        
+    }
+
+
+    public static byte[] sendMessage(State state, String message, String additionalData) throws InvalidKeyException, 
+    InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, 
+    BadPaddingException, UnsupportedEncodingException {
+        // Create and fill IV
+        SecureRandom secRandom = new SecureRandom();
+        byte[] iv = new byte[12]; secRandom.nextBytes(iv);
+
+        // Init Cipher
+        final Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        GCMParameterSpec parameterSpec = new GCMParameterSpec(128, iv); 
+        cipher.init(Cipher.ENCRYPT_MODE, state.getSendKey(), parameterSpec);
+
+        //cipher.updateAAD(additionalData); 
+        return cipher.doFinal(message.getBytes("UTF-8"));
+    }
 
     /**
      * Performs asymmetric encryption, by using the given public key to encrypt 
@@ -242,4 +276,22 @@ public class Util {
         return out.toByteArray();
     }
   
+}
+
+class State {
+    private final SecretKey keySendEnc;
+    private final SecretKey keyReceiveEnc;
+
+    public State(SecretKey keySendEnc, SecretKey keyReceiveEnc) {
+        this.keySendEnc = keySendEnc;
+        this.keyReceiveEnc = keyReceiveEnc;
+    }
+
+    public SecretKey getSendKey() {
+        return this.keySendEnc;
+    }
+
+    public SecretKey getReceiveKey() {
+        return this.keyReceiveEnc;
+    }
 }
