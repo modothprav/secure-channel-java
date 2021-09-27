@@ -6,6 +6,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
 import java.security.cert.Certificate;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
@@ -21,6 +22,9 @@ import java.security.SignatureException;
 import java.security.UnrecoverableEntryException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
+import java.security.spec.AlgorithmParameterSpec;
+import java.util.Arrays;
+import java.util.Base64;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -157,7 +161,6 @@ public class Util {
         
     }
 
-
     public static byte[] sendMessage(State state, String message, String additionalData) throws InvalidKeyException, 
     InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, 
     BadPaddingException, UnsupportedEncodingException {
@@ -171,7 +174,38 @@ public class Util {
         cipher.init(Cipher.ENCRYPT_MODE, state.getSendKey(), parameterSpec);
 
         //cipher.updateAAD(additionalData); 
-        return cipher.doFinal(message.getBytes("UTF-8"));
+        byte[] ciphertext = cipher.doFinal(message.getBytes("UTF-8"));
+
+        // Construct message
+        ByteBuffer byteBuffer = ByteBuffer.allocate(iv.length + ciphertext.length);
+        byteBuffer.put(iv); byteBuffer.put(ciphertext);
+
+        System.out.println("Encrypted message: " + Base64.getEncoder().encodeToString(ciphertext));
+        System.out.println("IV: " + Base64.getEncoder().encodeToString(iv));
+
+        return byteBuffer.array();
+    }
+
+    public static byte[] receiveMessage(State state, byte[] ciphertext, String additionalData) throws 
+    NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, InvalidAlgorithmParameterException, 
+    IllegalBlockSizeException, BadPaddingException {
+        final Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        // Get IV from message
+        byte[] gcmIV = Arrays.copyOfRange(ciphertext, 0, 12);
+        byte[] encrypted = Arrays.copyOfRange(ciphertext, 12, ciphertext.length);
+
+        System.out.println("Encrypted message: " + Base64.getEncoder().encodeToString(encrypted));
+        System.out.println("IV: " + Base64.getEncoder().encodeToString(gcmIV));
+
+        AlgorithmParameterSpec iv = new GCMParameterSpec(128, gcmIV);  
+        
+        cipher.init(Cipher.DECRYPT_MODE, state.getReceiveKey(), iv);
+
+        // test 
+        //cipher.init(Cipher.DECRYPT_MODE, state.getSendKey(), iv);
+
+        // cipher.updateAAD(additionalData);
+        return cipher.doFinal(encrypted);
     }
 
     /**
