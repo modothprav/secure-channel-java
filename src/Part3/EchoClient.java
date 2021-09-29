@@ -2,6 +2,7 @@ package Part3;
 
 import java.io.*;
 import java.net.*;
+import java.nio.ByteBuffer;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -36,7 +37,7 @@ public class EchoClient {
         } catch (IOException e) {
             System.out.println("Error when initializing connection");
         }
-    }
+    }  
 
     /**
      * Send a message to server and receive a reply.
@@ -69,12 +70,42 @@ public class EchoClient {
                 throw new SecurityException("Authentication FAILED - Signature does not match");
             }
             byte[] decrypted = Util.decrypt(ciphertext, sourceKey, CIPHER);
-
+            
             // TO DO: Verify if the received message is also the master key
 
             String reply = new String(decrypted, "UTF-8");
 
             this.outputToConsole(reqData, Base64.getEncoder().encodeToString(data));
+
+            SecretKey masterKey = new SecretKeySpec(data, "AES");
+            State state = Util.initChannel(masterKey, "client");
+
+            byte[] message = Util.sendMessage(state, "HELLO WORLD!", "");
+            System.out.println("\nSending cipher Text: " + Base64.getEncoder().encodeToString(message));
+            System.out.println("Sent message Length: " + message.length + "\n");
+            out.write(message);
+            out.flush();
+
+            //byte[] receivedData = new byte[4];
+            //OutputStream buffer = new ByteArrayOutputStream(256);
+                
+            //int nRead;
+            //while ((nRead = client.in.read(receivedData, 0, receivedData.length)) != 0) {
+            //    buffer.write(receivedData, 0, nRead);
+            //}
+
+            //byte[] receivedMessage = ((ByteArrayOutputStream) buffer).toByteArray();
+            byte[] receivedMessage = new byte[40];
+            in.read(receivedMessage);
+
+            System.out.println("Ciphertext: " + Base64.getEncoder().encodeToString(receivedMessage));
+            System.out.println("Received Message Length: " + receivedMessage.length);
+
+            decrypted = Util.receiveMessage(state, receivedMessage, "");
+                
+            System.out.println("\nReceived message: " + new String(decrypted, "UTF-8"));
+                
+            System.out.println("\nReceived Server message: " + new String(decrypted, "UTF-8"));
 
             return reply;
         } catch (Exception e) {
@@ -145,10 +176,13 @@ public class EchoClient {
         try {
             client.startConnection("127.0.0.1", 4444);
             client.sendMasterKey(masterKey.getEncoded(), serverPublicKey, keyPair.getPrivate());
+
+            
+
             //client.sendMessage("ABCDEFGH", serverPublicKey, keyPair.getPrivate());
             //client.sendMessage("87654321", serverPublicKey, keyPair.getPrivate());
             //client.sendMessage("HGFEDCBA", serverPublicKey, keyPair.getPrivate());
-            //client.stopConnection();
+            client.stopConnection();
         } catch (NullPointerException e) {
             throw new IOException("Connection ERROR - Check if Server running and the connection to Server");
         }
