@@ -1,8 +1,9 @@
 package Part3;
 
-import java.io.*;
-import java.net.*;
-import java.nio.ByteBuffer;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.Socket;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -59,8 +60,7 @@ public class EchoClient {
             out.flush();
 
             // Read Response message and extract ciphertext and signature
-            byte[] resData = new byte[512];
-            in.read(resData);
+            byte[] resData = new byte[512]; in.read(resData);
             int dataSize = resData.length;
             byte [] ciphertext = Arrays.copyOfRange(resData, 0, (dataSize + 1) / 2);
             byte [] signature = Arrays.copyOfRange(resData, (dataSize + 1) / 2, dataSize);
@@ -72,6 +72,10 @@ public class EchoClient {
             byte[] decrypted = Util.decrypt(ciphertext, sourceKey, CIPHER);
             
             // TO DO: Verify if the received message is also the master key
+            if (!Arrays.equals(decrypted, data)) { 
+                System.out.println("SESSION KEYS DO NOT MATCH, please try again");
+                return null;
+            }
 
             String reply = new String(decrypted, "UTF-8");
 
@@ -80,32 +84,23 @@ public class EchoClient {
             SecretKey masterKey = new SecretKeySpec(data, "AES");
             State state = Util.initChannel(masterKey, "client");
 
-            byte[] message = Util.sendMessage(state, "HELLO WORLD!", "");
-            System.out.println("\nSending cipher Text: " + Base64.getEncoder().encodeToString(message));
-            System.out.println("Sent message Length: " + message.length + "\n");
+            String plaintext = "HELLO THERE WORLD!";
+            byte[] message = Util.sendMessage(state, plaintext, "");
+            System.out.println("\nSending plaintext: " + plaintext);
+            System.out.println("Sending cipher Text: " + Base64.getEncoder().encodeToString(message));
+            
             out.write(message);
             out.flush();
 
-            //byte[] receivedData = new byte[4];
-            //OutputStream buffer = new ByteArrayOutputStream(256);
-                
-            //int nRead;
-            //while ((nRead = client.in.read(receivedData, 0, receivedData.length)) != 0) {
-            //    buffer.write(receivedData, 0, nRead);
-            //}
+            byte[] receivedMessage = new byte[512];
+            int size = in.read(receivedMessage);
+            ciphertext = Arrays.copyOfRange(receivedMessage, 0, size);
 
-            //byte[] receivedMessage = ((ByteArrayOutputStream) buffer).toByteArray();
-            byte[] receivedMessage = new byte[40];
-            in.read(receivedMessage);
+            System.out.println("\nReceived Ciphertext: " + Base64.getEncoder().encodeToString(ciphertext));
 
-            System.out.println("Ciphertext: " + Base64.getEncoder().encodeToString(receivedMessage));
-            System.out.println("Received Message Length: " + receivedMessage.length);
-
-            decrypted = Util.receiveMessage(state, receivedMessage, "");
+            decrypted = Util.receiveMessage(state, ciphertext, "");
                 
-            System.out.println("\nReceived message: " + new String(decrypted, "UTF-8"));
-                
-            System.out.println("\nReceived Server message: " + new String(decrypted, "UTF-8"));
+            System.out.println("Received Server message: " + new String(decrypted, "UTF-8"));
 
             return reply;
         } catch (Exception e) {

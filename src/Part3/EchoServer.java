@@ -1,7 +1,10 @@
 package Part3;
 
-import java.net.*;
-import java.io.*;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
@@ -91,20 +94,21 @@ public class EchoServer {
 
                 // byte[] receivedMessage = ((ByteArrayOutputStream) buffer).toByteArray();
 
-                byte[] receivedMessage = new byte[40];
-                in.read(receivedMessage);
-
-                System.out.println("Received Message Length: " + receivedMessage.length);
-
-                byte[] decryptedMessage = Util.receiveMessage(state, receivedMessage, "");
+                byte[] receivedMessage = new byte[512];
+                int size = in.read(receivedMessage);
+                ciphertext = Arrays.copyOfRange(receivedMessage, 0, size);
                 
-                System.out.println("\nReceived decrypted message: " + new String(decryptedMessage, "UTF-8"));
+
+                byte[] decryptedMessage = Util.receiveMessage(state, ciphertext, "");
+                
+                System.out.println("\nReceived Encrypted message " + Base64.getEncoder().encodeToString(ciphertext));
+                System.out.println("Received decrypted message: " + new String(decryptedMessage, "UTF-8"));
 
                 encrypted = Util.sendMessage(state, new String(decryptedMessage, "UTF-8"), "");
                 out.write(encrypted);
                 out.flush();
 
-                System.out.println("\nSending message " + Base64.getEncoder().encodeToString(encrypted));
+                System.out.println("\nSending Encrypted message " + Base64.getEncoder().encodeToString(encrypted));
             }
             stop();
         } catch (IOException e) {

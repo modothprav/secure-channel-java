@@ -180,9 +180,6 @@ public class Util {
         ByteBuffer byteBuffer = ByteBuffer.allocate(iv.length + ciphertext.length);
         byteBuffer.put(iv); byteBuffer.put(ciphertext);
 
-        System.out.println("Encrypted message: " + Base64.getEncoder().encodeToString(ciphertext));
-        System.out.println("IV: " + Base64.getEncoder().encodeToString(iv));
-
         return byteBuffer.array();
     }
 
@@ -193,9 +190,6 @@ public class Util {
         // Get IV from message
         byte[] gcmIV = Arrays.copyOfRange(ciphertext, 0, 12);
         byte[] encrypted = Arrays.copyOfRange(ciphertext, 12, ciphertext.length);
-
-        System.out.println("Encrypted message: " + Base64.getEncoder().encodeToString(encrypted));
-        System.out.println("IV: " + Base64.getEncoder().encodeToString(gcmIV));
 
         AlgorithmParameterSpec iv = new GCMParameterSpec(128, gcmIV);  
         
