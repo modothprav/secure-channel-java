@@ -1,12 +1,17 @@
 package Part3;
 
-import java.io.*;
-import java.net.*;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.Socket;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.Arrays;
 import java.util.Base64;
+
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 public class EchoClient {
 
@@ -33,17 +38,17 @@ public class EchoClient {
         } catch (IOException e) {
             System.out.println("Error when initializing connection");
         }
-    }
+    }  
 
     /**
      * Send a message to server and receive a reply.
      *
      * @param msg the message to send
      */
-    public String sendMessage(String msg, PublicKey destinationKey, PrivateKey sourceKey) {
+    public String sendMasterKey(byte[] data, PublicKey destinationKey, PrivateKey sourceKey) {
         try {
             //System.out.println("Client sending cleartext "+msg);
-            byte[] data = msg.getBytes("UTF-8");
+            //byte[] data = msg.getBytes("UTF-8");
             
             // encrypt and sign encrypted data
             byte[] encrypted = Util.encrypt(data, destinationKey, CIPHER);
@@ -55,8 +60,7 @@ public class EchoClient {
             out.flush();
 
             // Read Response message and extract ciphertext and signature
-            byte[] resData = new byte[512];
-            in.read(resData);
+            byte[] resData = new byte[512]; in.read(resData);
             int dataSize = resData.length;
             byte [] ciphertext = Arrays.copyOfRange(resData, 0, (dataSize + 1) / 2);
             byte [] signature = Arrays.copyOfRange(resData, (dataSize + 1) / 2, dataSize);
@@ -66,10 +70,37 @@ public class EchoClient {
                 throw new SecurityException("Authentication FAILED - Signature does not match");
             }
             byte[] decrypted = Util.decrypt(ciphertext, sourceKey, CIPHER);
+            
+            // TO DO: Verify if the received message is also the master key
+            if (!Arrays.equals(decrypted, data)) { 
+                System.out.println("SESSION KEYS DO NOT MATCH, please try again");
+                return null;
+            }
 
             String reply = new String(decrypted, "UTF-8");
 
-            this.outputToConsole(reqData, msg);
+            this.outputToConsole(reqData, Base64.getEncoder().encodeToString(data));
+
+            SecretKey masterKey = new SecretKeySpec(data, "AES");
+            State state = Util.initChannel(masterKey, "client");
+
+            String plaintext = "HELLO THERE WORLD!";
+            byte[] message = Util.sendMessage(state, plaintext, "");
+            System.out.println("\nSending plaintext: " + plaintext);
+            System.out.println("Sending cipher Text: " + Base64.getEncoder().encodeToString(message));
+            
+            out.write(message);
+            out.flush();
+
+            byte[] receivedMessage = new byte[512];
+            int size = in.read(receivedMessage);
+            ciphertext = Arrays.copyOfRange(receivedMessage, 0, size);
+
+            System.out.println("\nReceived Ciphertext: " + Base64.getEncoder().encodeToString(ciphertext));
+
+            decrypted = Util.receiveMessage(state, ciphertext, "");
+                
+            System.out.println("Received Server message: " + new String(decrypted, "UTF-8"));
 
             return reply;
         } catch (Exception e) {
@@ -135,12 +166,17 @@ public class EchoClient {
         // Clear store password
         Arrays.fill(storePass, '\0'); storePass = null;
 
+        SecretKey masterKey = Util.genMasterKey("AES");
+
         try {
             client.startConnection("127.0.0.1", 4444);
-            client.sendMessage("12345678", serverPublicKey, keyPair.getPrivate());
-            client.sendMessage("ABCDEFGH", serverPublicKey, keyPair.getPrivate());
-            client.sendMessage("87654321", serverPublicKey, keyPair.getPrivate());
-            client.sendMessage("HGFEDCBA", serverPublicKey, keyPair.getPrivate());
+            client.sendMasterKey(masterKey.getEncoded(), serverPublicKey, keyPair.getPrivate());
+
+            
+
+            //client.sendMessage("ABCDEFGH", serverPublicKey, keyPair.getPrivate());
+            //client.sendMessage("87654321", serverPublicKey, keyPair.getPrivate());
+            //client.sendMessage("HGFEDCBA", serverPublicKey, keyPair.getPrivate());
             client.stopConnection();
         } catch (NullPointerException e) {
             throw new IOException("Connection ERROR - Check if Server running and the connection to Server");

@@ -1,7 +1,11 @@
 package Part3;
 
-import java.net.*;
-import java.io.*;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
@@ -14,6 +18,9 @@ import java.util.Base64;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+
 
 public class EchoServer {
 
@@ -36,10 +43,11 @@ public class EchoServer {
      * @throws BadPaddingException
      * @throws IllegalBlockSizeException
      * @throws SignatureException
+     * @throws InvalidAlgorithmParameterException
      */
     public void start(int port, PublicKey destinationKey, PrivateKey sourceKey) throws
     InvalidKeyException, IllegalBlockSizeException, BadPaddingException, NoSuchAlgorithmException, 
-    NoSuchPaddingException, SignatureException {
+    NoSuchPaddingException, SignatureException, InvalidAlgorithmParameterException {
         try {
             serverSocket = new ServerSocket(port);
             clientSocket = serverSocket.accept();
@@ -59,10 +67,11 @@ public class EchoServer {
                     throw new SecurityException("Authentication FAILED - Signature does not match");
                 }
                 byte[] decrypted = Util.decrypt(ciphertext, sourceKey, CIPHER);
-                String msg = new String(decrypted, "UTF-8");
+
+                String msg = Base64.getEncoder().encodeToString(decrypted);
 
                 // Ecnrypt message and sign the ciphertext
-                byte[] encrypted = Util.encrypt(msg.getBytes(), destinationKey, CIPHER);
+                byte[] encrypted = Util.encrypt(decrypted, destinationKey, CIPHER);
                 byte[] signature = Util.sign(encrypted, sourceKey, HASH_ALGORITHM);
 
                 // Create response message and send back to client
@@ -71,6 +80,35 @@ public class EchoServer {
                 out.flush();
 
                 this.outputToConsole(resData, msg);
+
+                SecretKey masterKey = new SecretKeySpec(decrypted, "AES");
+                State state = Util.initChannel(masterKey, "server");
+
+                //byte[] receivedData = new byte[4];
+                //OutputStream buffer = new ByteArrayOutputStream(256);
+                
+                // int nRead; 
+                // while ((nRead = in.readNBytes(receivedData, 0, receivedData.length)) != 0) {
+                //     buffer.write(receivedData, 0, nRead);
+                // }
+
+                // byte[] receivedMessage = ((ByteArrayOutputStream) buffer).toByteArray();
+
+                byte[] receivedMessage = new byte[512];
+                int size = in.read(receivedMessage);
+                ciphertext = Arrays.copyOfRange(receivedMessage, 0, size);
+                
+
+                byte[] decryptedMessage = Util.receiveMessage(state, ciphertext, "");
+                
+                System.out.println("\nReceived Encrypted message " + Base64.getEncoder().encodeToString(ciphertext));
+                System.out.println("Received decrypted message: " + new String(decryptedMessage, "UTF-8"));
+
+                encrypted = Util.sendMessage(state, new String(decryptedMessage, "UTF-8"), "");
+                out.write(encrypted);
+                out.flush();
+
+                System.out.println("\nSending Encrypted message " + Base64.getEncoder().encodeToString(encrypted));
             }
             stop();
         } catch (IOException e) {
