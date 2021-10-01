@@ -53,58 +53,29 @@ public class EchoServer {
             clientSocket = serverSocket.accept();
             out = new DataOutputStream(clientSocket.getOutputStream());
             in = new DataInputStream(clientSocket.getInputStream());
+            State state = null;
             byte[] data = new byte[512];
             int numBytes;
             while ((numBytes = in.read(data)) != -1) {
 
-                // Split content into signature and ciphertext
-                int dataSize = data.length;
-                byte [] ciphertext = Arrays.copyOfRange(data, 0, (dataSize + 1) / 2);
-                byte [] signatureBytes = Arrays.copyOfRange(data, (dataSize + 1) / 2, dataSize);
+                if (state == null) { // perform asymmetric communication 
+                    byte[] decrypted = this.negotiateKeys(in, out, sourceKey, destinationKey, data);
 
-                // Authenticate then if passed decrypt data
-                if (!Util.verify(ciphertext, signatureBytes, destinationKey, HASH_ALGORITHM)) {
-                    throw new SecurityException("Authentication FAILED - Signature does not match");
+                    SecretKey masterKey = new SecretKeySpec(decrypted, "AES");
+                    state = Util.initChannel(masterKey, "server");
+                    continue;
                 }
-                byte[] decrypted = Util.decrypt(ciphertext, sourceKey, CIPHER);
 
-                String msg = Base64.getEncoder().encodeToString(decrypted);
-
-                // Ecnrypt message and sign the ciphertext
-                byte[] encrypted = Util.encrypt(decrypted, destinationKey, CIPHER);
-                byte[] signature = Util.sign(encrypted, sourceKey, HASH_ALGORITHM);
-
-                // Create response message and send back to client
-                byte[] resData = Util.mergeArrays(encrypted, signature);
-                out.write(resData);
-                out.flush();
-
-                this.outputToConsole(resData, msg);
-
-                SecretKey masterKey = new SecretKeySpec(decrypted, "AES");
-                State state = Util.initChannel(masterKey, "server");
-
-                //byte[] receivedData = new byte[4];
-                //OutputStream buffer = new ByteArrayOutputStream(256);
+                // perform symmetric communication 
+                System.out.println("Reached here after in.read()");
+                byte[] ciphertext = Arrays.copyOfRange(data, 0, numBytes);
                 
-                // int nRead; 
-                // while ((nRead = in.readNBytes(receivedData, 0, receivedData.length)) != 0) {
-                //     buffer.write(receivedData, 0, nRead);
-                // }
-
-                // byte[] receivedMessage = ((ByteArrayOutputStream) buffer).toByteArray();
-
-                byte[] receivedMessage = new byte[512];
-                int size = in.read(receivedMessage);
-                ciphertext = Arrays.copyOfRange(receivedMessage, 0, size);
-                
-
                 byte[] decryptedMessage = Util.receiveMessage(state, ciphertext, "");
                 
                 System.out.println("\nReceived Encrypted message " + Base64.getEncoder().encodeToString(ciphertext));
                 System.out.println("Received decrypted message: " + new String(decryptedMessage, "UTF-8"));
 
-                encrypted = Util.sendMessage(state, new String(decryptedMessage, "UTF-8"), "");
+                byte[] encrypted = Util.sendMessage(state, new String(decryptedMessage, "UTF-8"), "");
                 out.write(encrypted);
                 out.flush();
 
@@ -116,6 +87,37 @@ public class EchoServer {
         }
 
     }
+
+    private byte[] negotiateKeys(DataInputStream in, DataOutputStream out, PrivateKey privateKey, PublicKey publicKey, byte[] data) throws 
+    InvalidKeyException, NoSuchAlgorithmException, SignatureException, SecurityException, IllegalBlockSizeException, BadPaddingException, 
+    NoSuchPaddingException, IOException {
+        
+        // Split content into signature and ciphertext
+        int dataSize = data.length;
+        byte [] ciphertext = Arrays.copyOfRange(data, 0, (dataSize + 1) / 2);
+        byte [] signatureBytes = Arrays.copyOfRange(data, (dataSize + 1) / 2, dataSize);
+
+        // Authenticate then if passed decrypt data
+        if (!Util.verify(ciphertext, signatureBytes, publicKey, HASH_ALGORITHM)) {
+            throw new SecurityException("Authentication FAILED - Signature does not match");
+        }
+        byte[] masterKey = Util.decrypt(ciphertext, privateKey, CIPHER);
+
+        String msg = Base64.getEncoder().encodeToString(masterKey);
+
+        // Build the components required for the response message
+        byte[] encrypted = Util.encrypt(masterKey, publicKey, CIPHER);
+        byte[] signature = Util.sign(encrypted, privateKey, HASH_ALGORITHM);
+
+        // Send encrypted Master key with signature back to confirm
+        byte[] resData = Util.mergeArrays(encrypted, signature);
+        out.write(resData);
+        out.flush();
+
+        this.outputToConsole(resData, msg);
+
+        return masterKey; 
+    } 
 
     /**
      * Outputs the request received from the client and the response sent by the 
@@ -130,7 +132,7 @@ public class EchoServer {
         System.out.println("\n<-------------------------------------->");
         System.out.println("Request received");
         System.out.println("Authentication Successful");
-        System.out.println("Server received cleartext: "+plaintext);
+        System.out.println("Server received Master Key: "+plaintext);
         System.out.println("\n<-------------------------------------->");
         System.out.println("Server sending ciphertext: "+Base64.getEncoder().encodeToString(message));
         System.out.println("\n###############################################");
