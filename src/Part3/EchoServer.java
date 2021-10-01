@@ -67,7 +67,6 @@ public class EchoServer {
                 }
 
                 // perform symmetric communication 
-                System.out.println("Reached here after in.read()");
                 byte[] ciphertext = Arrays.copyOfRange(data, 0, numBytes);
                 
                 byte[] decryptedMessage = Util.receiveMessage(state, ciphertext, "");

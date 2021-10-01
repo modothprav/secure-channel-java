@@ -58,6 +58,8 @@ public class EchoClient {
                 return this.negotiateKeys(in, out, sourceKey, destinationKey, data);
             }
 
+            if (data.length > 32) { throw new IllegalArgumentException("Invalid input: Messages needs to be between 1 and 32 characters");}
+
             byte[] message = Util.sendMessage(state, new String(data, "UTF-8"), "");
             System.out.println("\nSending plaintext: " + new String(data, "UTF-8"));
             System.out.println("Sending cipher Text: " + Base64.getEncoder().encodeToString(message));
@@ -183,7 +185,11 @@ public class EchoClient {
             state = client.sendMessage(masterKey.getEncoded(), serverPublicKey, keyPair.getPrivate(), state);
             state = client.sendMessage("Hello World".getBytes(), serverPublicKey, keyPair.getPrivate(), state);
             state = client.sendMessage("HELLO WORLD".getBytes(), serverPublicKey, keyPair.getPrivate(), state);
+
+            state = client.sendMessage("HELLO THEREdsjfdsfjdsfdsfsdfdsfdsfdsfdsfdsfdsfdsfdsfds".getBytes(), serverPublicKey, keyPair.getPrivate(), state);
+
             state = client.sendMessage("HELLO THERE".getBytes(), serverPublicKey, keyPair.getPrivate(), state);
+            
             
 
             //client.sendMessage("ABCDEFGH", serverPublicKey, keyPair.getPrivate());
