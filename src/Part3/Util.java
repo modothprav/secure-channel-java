@@ -180,6 +180,7 @@ public class Util {
         ByteBuffer byteBuffer = ByteBuffer.allocate(iv.length + ciphertext.length);
         byteBuffer.put(iv); byteBuffer.put(ciphertext);
 
+        state.msgSent();
         return byteBuffer.array();
     }
 
@@ -198,7 +199,8 @@ public class Util {
         // test 
         //cipher.init(Cipher.DECRYPT_MODE, state.getSendKey(), iv);
 
-        // cipher.updateAAD(additionalData);
+        //cipher.updateAAD();
+        state.msgReceived();
         return cipher.doFinal(encrypted);
     }
 
@@ -309,10 +311,14 @@ public class Util {
 class State {
     private final SecretKey keySendEnc;
     private final SecretKey keyReceiveEnc;
+    private int receiveCount;
+    private int sentCount;
 
     public State(SecretKey keySendEnc, SecretKey keyReceiveEnc) {
         this.keySendEnc = keySendEnc;
         this.keyReceiveEnc = keyReceiveEnc;
+        this.receiveCount = 0;
+        this.sentCount = 0;
     }
 
     public SecretKey getSendKey() {
@@ -321,5 +327,21 @@ class State {
 
     public SecretKey getReceiveKey() {
         return this.keyReceiveEnc;
+    }
+
+    public int getReceiveCount() {
+        return this.receiveCount;
+    }
+
+    public int getSentCount() {
+        return this.sentCount;
+    }
+
+    public void msgReceived() {
+        this.receiveCount++;
+    }
+
+    public void msgSent() {
+        this.sentCount++;
     }
 }
