@@ -164,6 +164,12 @@ public class Util {
     public static byte[] sendMessage(State state, String message, String additionalData) throws InvalidKeyException, 
     InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, 
     BadPaddingException, UnsupportedEncodingException {
+        state.msgSent();
+        byte[] sentCount = new byte[1];
+        sentCount[0] = (byte) state.getSentCount();
+        System.out.println("MsgSent Count: " + state.getSentCount());
+        System.out.println("MsgReceived Count " + state.getReceiveCount());
+
         // Create and fill IV
         SecureRandom secRandom = new SecureRandom();
         byte[] iv = new byte[12]; secRandom.nextBytes(iv);
@@ -173,31 +179,46 @@ public class Util {
         GCMParameterSpec parameterSpec = new GCMParameterSpec(128, iv); 
         cipher.init(Cipher.ENCRYPT_MODE, state.getSendKey(), parameterSpec);
 
+        cipher.updateAAD(sentCount);
         cipher.updateAAD(iv); 
         byte[] ciphertext = cipher.doFinal(message.getBytes("UTF-8"));
 
         // Construct message
-        ByteBuffer byteBuffer = ByteBuffer.allocate(iv.length + ciphertext.length);
-        byteBuffer.put(iv); byteBuffer.put(ciphertext);
+        ByteBuffer byteBuffer = ByteBuffer.allocate(iv.length + ciphertext.length + sentCount.length);
+        byteBuffer.put(sentCount); byteBuffer.put(iv); byteBuffer.put(ciphertext);
 
-        state.msgSent();
         return byteBuffer.array();
     }
 
     public static byte[] receiveMessage(State state, byte[] ciphertext, String additionalData) throws 
     NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, InvalidAlgorithmParameterException, 
-    IllegalBlockSizeException, BadPaddingException {
+    IllegalBlockSizeException, BadPaddingException, IOException {
+        System.out.println("MsgSent Count: " + state.getSentCount());
+        System.out.println("MsgReceived Count " + state.getReceiveCount());
+
         final Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
         // Get IV from message
-        byte[] gcmIV = Arrays.copyOfRange(ciphertext, 0, 12);
-        byte[] encrypted = Arrays.copyOfRange(ciphertext, 12, ciphertext.length);
+        byte[] sentCount = Arrays.copyOfRange(ciphertext, 0, 1);
+        byte[] gcmIV = Arrays.copyOfRange(ciphertext, 1, 13);
+        byte[] encrypted = Arrays.copyOfRange(ciphertext, 13, ciphertext.length);
+
+        // Out of Order test 
+        //state.msgReceived();
+
+        // Check if received message is out of order
+        if ((int) sentCount[0] <= state.getReceiveCount()) {
+            System.out.println("\nERROR - Message Out Of Order");
+            System.exit(0);
+        }
+
+        state.setMsgReceived(sentCount[0]); // Update receive count
 
         AlgorithmParameterSpec iv = new GCMParameterSpec(128, gcmIV);  
         
         cipher.init(Cipher.DECRYPT_MODE, state.getReceiveKey(), iv);
 
+        cipher.updateAAD(sentCount);;
         cipher.updateAAD(gcmIV);
-        state.msgReceived();
         return cipher.doFinal(encrypted);
     }
 
@@ -332,6 +353,10 @@ class State {
 
     public int getSentCount() {
         return this.sentCount;
+    }
+
+    public void setMsgReceived(int n) {
+        this.receiveCount = n;
     }
 
     public void msgReceived() {
