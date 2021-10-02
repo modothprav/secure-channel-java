@@ -29,6 +29,9 @@ public class EchoClient {
     private final String HASH_ALGORITHM = "SHA256withRSA";
     private final static String ERROR_MSG = "Valid command: java Part2.EchoClient <Store password> <Key password>";
 
+    // test replay attack
+    //private byte[] sessionKey;
+
     /**
      * Setup the two way streams.
      *
@@ -55,10 +58,19 @@ public class EchoClient {
     public State sendMessage(byte[] data, PublicKey destinationKey, PrivateKey sourceKey, State state) {
         try {
             // Perform Key negotiation if State has been reset or initialized
-            if (state == null && data == null) { // initialized
+            if (state == null && data == null) { // initialize session
+                
                 return this.negotiateKeys(in, out, sourceKey, destinationKey, Util.genMasterKey("AES").getEncoded());
-            } else if (state == null) { // reset 
+
+                // Test replay attack
+                //this.sessionKey = Util.genMasterKey("AES").getEncoded();
+                //return this.negotiateKeys(in, out, sourceKey, destinationKey, this.sessionKey);
+
+            } else if (state == null) { // reset session
                 state = this.negotiateKeys(in, out, sourceKey, destinationKey, Util.genMasterKey("AES").getEncoded());
+
+                // Test replay attack
+                //state = this.negotiateKeys(in, out, sourceKey, destinationKey, this.sessionKey);
             }
 
             if (data.length > 32) { throw new IllegalArgumentException("Invalid input: Messages needs to be between 1 and 32 characters");}

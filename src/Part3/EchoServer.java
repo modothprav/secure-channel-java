@@ -13,6 +13,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SignatureException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 
@@ -32,6 +33,7 @@ public class EchoServer {
     private final String CIPHER = "RSA/ECB/PKCS1Padding";
     private final String HASH_ALGORITHM = "SHA256withRSA";
     private static final String ERROR_MSG = "Valid command: java Part2.EchoServer <store password> <keypassword>";
+    private ArrayList<byte[]> sessionKeys = new ArrayList<>(); // stores session keys to check for replay attacks
 
     /**
      * Create the server socket and wait for a connection.
@@ -57,12 +59,12 @@ public class EchoServer {
             State state = null;
             byte[] data = new byte[512];
             int numBytes;
+            
             while ((numBytes = in.read(data)) != -1) {
 
                 // Perform Key negotiation if State is reset or initialized
                 if (state == null) {
                     byte[] key = this.negotiateKeys(in, out, sourceKey, destinationKey, data);
-
                     SecretKey masterKey = new SecretKeySpec(key, "AES");
                     state = Util.initChannel(masterKey, "server");
                     continue;
@@ -79,6 +81,7 @@ public class EchoServer {
 
                 this.outputComms(encrypted, decrypted);
 
+                // If max message count is reached then reset state to gen new session key
                 if (state.getMaxMsgCount() <= state.getReceiveCount()) { state = null; }
             }
             stop();
@@ -91,7 +94,6 @@ public class EchoServer {
     private byte[] negotiateKeys(DataInputStream in, DataOutputStream out, PrivateKey privateKey, PublicKey publicKey, byte[] data) throws 
     InvalidKeyException, NoSuchAlgorithmException, SignatureException, SecurityException, IllegalBlockSizeException, BadPaddingException, 
     NoSuchPaddingException, IOException {
-        
         // Split content into signature and ciphertext
         int dataSize = data.length;
         byte [] ciphertext = Arrays.copyOfRange(data, 0, (dataSize + 1) / 2);
@@ -102,6 +104,13 @@ public class EchoServer {
             throw new SecurityException("Authentication FAILED - Signature does not match");
         }
         byte[] masterKey = Util.decrypt(ciphertext, privateKey, CIPHER);
+        
+        // If the same session key is used throw an error
+        for (int i = 0; i < this.sessionKeys.size(); i++) {
+            if (Arrays.equals(this.sessionKeys.get(i), masterKey)) { throw new SecurityException("REPLAY ATTACK DETECTED"); }
+        }
+
+        this.sessionKeys.add(masterKey); // add key for future checks
 
         String msg = Base64.getEncoder().encodeToString(masterKey);
 
