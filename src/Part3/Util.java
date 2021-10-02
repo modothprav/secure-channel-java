@@ -173,7 +173,7 @@ public class Util {
         GCMParameterSpec parameterSpec = new GCMParameterSpec(128, iv); 
         cipher.init(Cipher.ENCRYPT_MODE, state.getSendKey(), parameterSpec);
 
-        //cipher.updateAAD(additionalData); 
+        cipher.updateAAD(iv); 
         byte[] ciphertext = cipher.doFinal(message.getBytes("UTF-8"));
 
         // Construct message
@@ -196,10 +196,7 @@ public class Util {
         
         cipher.init(Cipher.DECRYPT_MODE, state.getReceiveKey(), iv);
 
-        // test 
-        //cipher.init(Cipher.DECRYPT_MODE, state.getSendKey(), iv);
-
-        //cipher.updateAAD();
+        cipher.updateAAD(gcmIV);
         state.msgReceived();
         return cipher.doFinal(encrypted);
     }
