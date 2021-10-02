@@ -72,7 +72,7 @@ public class EchoServer {
                 byte[] ciphertext = Arrays.copyOfRange(data, 0, numBytes);
                 byte[] decrypted = Util.receiveMessage(state, ciphertext, "");
 
-                // Echo back received message after encryting
+                // Echo back received message after encrypting
                 byte[] encrypted = Util.sendMessage(state, new String(decrypted, "UTF-8"), "");
                 out.write(encrypted);
                 out.flush();

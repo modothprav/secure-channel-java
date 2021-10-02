@@ -83,11 +83,11 @@ public class EchoClient {
         }
     }
 
-    private State negotiateKeys(DataInputStream in, DataOutputStream out, PrivateKey privateKey, PublicKey publicKey, byte[] data) throws 
+    private State negotiateKeys(DataInputStream in, DataOutputStream out, PrivateKey privateKey, PublicKey publicKey, byte[] masterKey) throws 
     IOException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, NoSuchAlgorithmException, NoSuchPaddingException, 
     SignatureException, SecurityException {
         // encrypt and sign encrypted data
-        byte[] encrypted = Util.encrypt(data, publicKey, CIPHER);
+        byte[] encrypted = Util.encrypt(masterKey, publicKey, CIPHER);
         byte [] signatureBytes = Util.sign(encrypted, privateKey, HASH_ALGORITHM);
 
         // Create request data and send to server
@@ -107,15 +107,15 @@ public class EchoClient {
         }
         byte[] decrypted = Util.decrypt(ciphertext, privateKey, CIPHER);
         
-        // TO DO: Verify if the received message is also the master key
-        if (!Arrays.equals(decrypted, data)) { 
+        // Verify if the received message is also the master key
+        if (!Arrays.equals(decrypted, masterKey)) { 
             throw new IOException("SESSION KEYS DO NOT MATCH, please try again");
         }
 
-        this.outputRequest(reqData, Base64.getEncoder().encodeToString(data));
+        this.outputRequest(reqData, masterKey);
 
-        SecretKey masterKey = new SecretKeySpec(data, "AES");
-        return Util.initChannel(masterKey, "client");
+        SecretKey sessionKey = new SecretKeySpec(masterKey, "AES");
+        return Util.initChannel(sessionKey, "client");
 
     }
 
@@ -140,14 +140,14 @@ public class EchoClient {
      * @param message The message being sent to the server (ciphertext)
      * @param plaintext The message received from the server
      */
-    private void outputRequest(byte[] message, String plaintext) {
+    private void outputRequest(byte[] sentMessage, byte[] receivedMessage) {
         System.out.println("\n############## KEY NEGOTIATION ################");
         System.out.println("\n<-------------------------------------->");
-        System.out.println("Client sending ciphertext: " + Base64.getEncoder().encodeToString(message));
+        System.out.println("Client sending ciphertext: " + Base64.getEncoder().encodeToString(sentMessage));
         System.out.println("\n<-------------------------------------->");
         System.out.println("Key received");
         System.out.println("Authentication Successful");
-        System.out.println("Server CONFIRMED Master Key: " + plaintext);
+        System.out.println("Server CONFIRMED Master Key: " + Base64.getEncoder().encodeToString(receivedMessage));
         System.out.println("\n###############################################");
     }
 
