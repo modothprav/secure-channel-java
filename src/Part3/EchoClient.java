@@ -55,8 +55,10 @@ public class EchoClient {
     public State sendMessage(byte[] data, PublicKey destinationKey, PrivateKey sourceKey, State state) {
         try {
             // Perform Key negotiation if State has been reset or initialized
-            if (state == null) {
-                return this.negotiateKeys(in, out, sourceKey, destinationKey, data);
+            if (state == null && data == null) { // initialized
+                return this.negotiateKeys(in, out, sourceKey, destinationKey, Util.genMasterKey("AES").getEncoded());
+            } else if (state == null) { // reset 
+                state = this.negotiateKeys(in, out, sourceKey, destinationKey, Util.genMasterKey("AES").getEncoded());
             }
 
             if (data.length > 32) { throw new IllegalArgumentException("Invalid input: Messages needs to be between 1 and 32 characters");}
@@ -75,6 +77,9 @@ public class EchoClient {
             byte [] decrypted = Util.receiveMessage(state, ciphertext, "");
 
             this.outputComms(encrypted, decrypted);
+
+            // Reset session if max messages reached
+            if (state.getMaxMsgCount() <= state.getSentCount()) { return null; }
 
             return state;
         } catch (Exception e) {
@@ -190,12 +195,11 @@ public class EchoClient {
         try {
             client.startConnection("127.0.0.1", 4444);
             State state = null;
-            state = client.sendMessage(masterKey.getEncoded(), serverPublicKey, keyPair.getPrivate(), state);
-            state = client.sendMessage("Hello World".getBytes(), serverPublicKey, keyPair.getPrivate(), state);
-            state = client.sendMessage("HELLO WORLD".getBytes(), serverPublicKey, keyPair.getPrivate(), state);
-
-
-            state = client.sendMessage("HELLO THERE".getBytes(), serverPublicKey, keyPair.getPrivate(), state);
+            state = client.sendMessage(null, serverPublicKey, keyPair.getPrivate(), state); // Initialize 
+            state = client.sendMessage("FIRST Message".getBytes(), serverPublicKey, keyPair.getPrivate(), state);
+            state = client.sendMessage("SECOND Message".getBytes(), serverPublicKey, keyPair.getPrivate(), state);
+            state = client.sendMessage("THIRD Message".getBytes(), serverPublicKey, keyPair.getPrivate(), state);
+            state = client.sendMessage("FOURTH Message".getBytes(), serverPublicKey, keyPair.getPrivate(), state);
             
             
 

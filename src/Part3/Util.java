@@ -167,8 +167,6 @@ public class Util {
         state.msgSent();
         byte[] sentCount = new byte[1];
         sentCount[0] = (byte) state.getSentCount();
-        System.out.println("MsgSent Count: " + state.getSentCount());
-        System.out.println("MsgReceived Count " + state.getReceiveCount());
 
         // Create and fill IV
         SecureRandom secRandom = new SecureRandom();
@@ -193,8 +191,6 @@ public class Util {
     public static byte[] receiveMessage(State state, byte[] ciphertext, String additionalData) throws 
     NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, InvalidAlgorithmParameterException, 
     IllegalBlockSizeException, BadPaddingException, IOException {
-        System.out.println("MsgSent Count: " + state.getSentCount());
-        System.out.println("MsgReceived Count " + state.getReceiveCount());
 
         final Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
         // Get IV from message
@@ -329,6 +325,7 @@ public class Util {
 class State {
     private final SecretKey keySendEnc;
     private final SecretKey keyReceiveEnc;
+    private final int maxMessages;
     private int receiveCount;
     private int sentCount;
 
@@ -337,6 +334,7 @@ class State {
         this.keyReceiveEnc = keyReceiveEnc;
         this.receiveCount = 0;
         this.sentCount = 0;
+        this.maxMessages = 3;
     }
 
     public SecretKey getSendKey() {
@@ -345,6 +343,10 @@ class State {
 
     public SecretKey getReceiveKey() {
         return this.keyReceiveEnc;
+    }
+
+    public int getMaxMsgCount() {
+        return this.maxMessages;
     }
 
     public int getReceiveCount() {

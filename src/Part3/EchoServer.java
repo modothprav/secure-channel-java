@@ -59,7 +59,7 @@ public class EchoServer {
             int numBytes;
             while ((numBytes = in.read(data)) != -1) {
 
-                // Perform Key negotiation if State is reset of initialized
+                // Perform Key negotiation if State is reset or initialized
                 if (state == null) {
                     byte[] key = this.negotiateKeys(in, out, sourceKey, destinationKey, data);
 
@@ -78,6 +78,8 @@ public class EchoServer {
                 out.flush();
 
                 this.outputComms(encrypted, decrypted);
+
+                if (state.getMaxMsgCount() <= state.getReceiveCount()) { state = null; }
             }
             stop();
         } catch (IOException e) {
