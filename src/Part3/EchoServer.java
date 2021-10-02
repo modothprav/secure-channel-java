@@ -3,6 +3,7 @@ package Part3;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.InvalidAlgorithmParameterException;
@@ -58,27 +59,25 @@ public class EchoServer {
             int numBytes;
             while ((numBytes = in.read(data)) != -1) {
 
-                if (state == null) { // perform asymmetric communication 
-                    byte[] decrypted = this.negotiateKeys(in, out, sourceKey, destinationKey, data);
+                // Perform Key negotiation if State is reset of initialized
+                if (state == null) {
+                    byte[] key = this.negotiateKeys(in, out, sourceKey, destinationKey, data);
 
-                    SecretKey masterKey = new SecretKeySpec(decrypted, "AES");
+                    SecretKey masterKey = new SecretKeySpec(key, "AES");
                     state = Util.initChannel(masterKey, "server");
                     continue;
                 }
 
-                // perform symmetric communication 
+                // Decrypt Received message
                 byte[] ciphertext = Arrays.copyOfRange(data, 0, numBytes);
-                
-                byte[] decryptedMessage = Util.receiveMessage(state, ciphertext, "");
-                
-                System.out.println("\nReceived Encrypted message " + Base64.getEncoder().encodeToString(ciphertext));
-                System.out.println("Received decrypted message: " + new String(decryptedMessage, "UTF-8"));
+                byte[] decrypted = Util.receiveMessage(state, ciphertext, "");
 
-                byte[] encrypted = Util.sendMessage(state, new String(decryptedMessage, "UTF-8"), "");
+                // Echo back received message after encrypting
+                byte[] encrypted = Util.sendMessage(state, new String(decrypted, "UTF-8"), "");
                 out.write(encrypted);
                 out.flush();
 
-                System.out.println("\nSending Encrypted message " + Base64.getEncoder().encodeToString(encrypted));
+                this.outputComms(encrypted, decrypted);
             }
             stop();
         } catch (IOException e) {
@@ -113,27 +112,36 @@ public class EchoServer {
         out.write(resData);
         out.flush();
 
-        this.outputToConsole(resData, msg);
+        this.outputRequest(resData, msg);
 
         return masterKey; 
     } 
 
     /**
-     * Outputs the request received from the client and the response sent by the 
-     * server on the console. Also informs that authentication was successful.
-     * Sent messages are displayed as ciphertext whilereceived messages are 
-     * displayed as plaintext.
+     * 
      * @param message The message that is being sent to the client (ciphertext)
      * @param plaintext The decrypted message received by the client
      */
-    private void outputToConsole(byte[] message, String plaintext) {
-        System.out.println("\n###############################################");
+    private void outputRequest(byte[] message, String plaintext) {
+        System.out.println("\n############## KEY NEGOTIATION ################");
         System.out.println("\n<-------------------------------------->");
-        System.out.println("Request received");
+        System.out.println("Negotiation Request received");
         System.out.println("Authentication Successful");
         System.out.println("Server received Master Key: "+plaintext);
         System.out.println("\n<-------------------------------------->");
         System.out.println("Server sending ciphertext: "+Base64.getEncoder().encodeToString(message));
+        System.out.println("\n###############################################");
+    }
+
+    private void outputComms(byte[] ciphertext, byte[] plaintext) throws UnsupportedEncodingException {
+        System.out.println("\n############### ECHO-RESPONSE #################");
+        System.out.println("\n<-------------------------------------->");
+        System.out.println("Message Received");
+        System.out.println("Authentication successful");
+        System.out.println("Server Received Plaintext: " + new String(plaintext, "UTF-8"));
+        System.out.println("<-------------------------------------->");
+        System.out.println("Server Sending Ciphertext: " + Base64.getEncoder().encodeToString(ciphertext));
+        System.out.println("<-------------------------------------->");
         System.out.println("\n###############################################");
     }
 
