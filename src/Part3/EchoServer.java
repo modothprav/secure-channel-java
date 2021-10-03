@@ -34,6 +34,7 @@ public class EchoServer {
     private final String HASH_ALGORITHM = "SHA256withRSA";
     private static final String ERROR_MSG = "Valid command: java Part2.EchoServer <store password> <keypassword>";
     private ArrayList<byte[]> sessionKeys = new ArrayList<>(); // stores session keys to check for replay attacks
+    private static final int MAX_MESSAGES = 5; // Default max messages set to 5
 
     /**
      * Create the server socket and wait for a connection.
@@ -48,7 +49,7 @@ public class EchoServer {
      * @throws SignatureException
      * @throws InvalidAlgorithmParameterException
      */
-    public void start(int port, PublicKey destinationKey, PrivateKey sourceKey) throws
+    public void start(int port, PublicKey destinationKey, PrivateKey sourceKey, int maxMsgs) throws
     InvalidKeyException, IllegalBlockSizeException, BadPaddingException, NoSuchAlgorithmException, 
     NoSuchPaddingException, SignatureException, InvalidAlgorithmParameterException {
         try {
@@ -64,9 +65,9 @@ public class EchoServer {
 
                 // Perform Key negotiation if State is reset or initialized
                 if (state == null) {
-                    byte[] key = this.negotiateKeys(in, out, sourceKey, destinationKey, data);
+                    byte[] key = this.negotiateKeys(in, out, sourceKey, destinationKey, data, maxMsgs);
                     SecretKey masterKey = new SecretKeySpec(key, "AES");
-                    state = Util.initChannel(masterKey, "server");
+                    state = Util.initChannel(masterKey, "server", maxMsgs);
                     continue;
                 }
 
@@ -91,7 +92,7 @@ public class EchoServer {
 
     }
 
-    private byte[] negotiateKeys(DataInputStream in, DataOutputStream out, PrivateKey privateKey, PublicKey publicKey, byte[] data) throws 
+    private byte[] negotiateKeys(DataInputStream in, DataOutputStream out, PrivateKey privateKey, PublicKey publicKey, byte[] data, int maxMsgs) throws 
     InvalidKeyException, NoSuchAlgorithmException, SignatureException, SecurityException, IllegalBlockSizeException, BadPaddingException, 
     NoSuchPaddingException, IOException {
         // Split content into signature and ciphertext
@@ -117,9 +118,10 @@ public class EchoServer {
         // Build the components required for the response message
         byte[] encrypted = Util.encrypt(masterKey, publicKey, CIPHER);
         byte[] signature = Util.sign(encrypted, privateKey, HASH_ALGORITHM);
+        byte[] maxMessage = new byte[1]; maxMessage[0] = (byte) maxMsgs;
 
         // Send encrypted Master key with signature back to confirm
-        byte[] resData = Util.mergeArrays(encrypted, signature);
+        byte[] resData = Util.mergeArrays(encrypted, signature, maxMessage);
         out.write(resData);
         out.flush();
 
@@ -175,6 +177,13 @@ public class EchoServer {
     public static void main(String[] args) throws Exception{
         if (args.length < 2) { throw new IllegalArgumentException("Not enough arguments specified\n" + ERROR_MSG); }
 
+        int maxMessages = MAX_MESSAGES;
+        
+        if (args.length > 2) { 
+            maxMessages = Integer.parseInt(args[2]);
+            if (maxMessages == 0) { throw new IllegalArgumentException("Max Messages must be greater than 0"); }
+        } 
+
         char[] storePass = args[0].toCharArray();
         char[] keyPass = args[1].toCharArray();
         Arrays.fill(args, null);
@@ -193,7 +202,7 @@ public class EchoServer {
         // clear store password
         Arrays.fill(storePass, '\0'); storePass = null;
 
-        server.start(4444, clientPublicKey, keyPair.getPrivate());
+        server.start(4444, clientPublicKey, keyPair.getPrivate(), maxMessages);
     }
 
 }

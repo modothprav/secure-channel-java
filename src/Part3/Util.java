@@ -146,7 +146,7 @@ public class Util {
         return new SecretKeySpec(keyBytes, "AES");
     }
 
-    public static State initChannel(SecretKey masterKey, String role) throws InvalidKeyException, NoSuchAlgorithmException {
+    public static State initChannel(SecretKey masterKey, String role, int maxMsgs) throws InvalidKeyException, NoSuchAlgorithmException {
         if (!role.equals("client") && !role.equals("server")) { throw new IllegalArgumentException("Invalid Role specified, must be 'client' or 'server'"); }
         // Generate Send and receive keys
         SecretKey keySendEnc = genSymmetricKey("Client to Server", masterKey);
@@ -154,16 +154,17 @@ public class Util {
 
         // Swap send and receive keys if role is server
         if (role.equals("client")) {
-            return new State(keySendEnc, keyReceiveEnc);
+            return new State(keySendEnc, keyReceiveEnc, maxMsgs);
         } else {
-            return new State(keyReceiveEnc, keySendEnc);
+            return new State(keyReceiveEnc, keySendEnc, maxMsgs);
         }
         
     }
 
     public static byte[] sendMessage(State state, String message, String additionalData) throws InvalidKeyException, 
     InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, 
-    BadPaddingException, UnsupportedEncodingException {
+    BadPaddingException, IOException {
+        // Update and save message sent count
         state.msgSent();
         byte[] sentCount = new byte[1];
         sentCount[0] = (byte) state.getSentCount();
@@ -181,11 +182,7 @@ public class Util {
         cipher.updateAAD(iv); 
         byte[] ciphertext = cipher.doFinal(message.getBytes("UTF-8"));
 
-        // Construct message
-        ByteBuffer byteBuffer = ByteBuffer.allocate(iv.length + ciphertext.length + sentCount.length);
-        byteBuffer.put(sentCount); byteBuffer.put(iv); byteBuffer.put(ciphertext);
-
-        return byteBuffer.array();
+        return mergeArrays(sentCount, iv, ciphertext);
     }
 
     public static byte[] receiveMessage(State state, byte[] ciphertext, String additionalData) throws 
@@ -305,18 +302,16 @@ public class Util {
     }
 
     /**
-     * Merges two byte arrays into one, by appending the second array
-     * to the first one. Used to merge the ciphertext and singature 
-     * to generate the message which will be sent over the connection.
-     * @param ciphertext The first byte array
-     * @param signature The second byte array
-     * @return The combined byte array of the given two arguments
+     * 
+     * @param data
+     * @return
      * @throws IOException
      */
-    public static byte[] mergeArrays(byte[] ciphertext, byte[] signature) throws IOException {
+    public static byte[] mergeArrays(byte[]... data) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        out.write(ciphertext);
-        out.write(signature);
+        for (byte[] array : data) {
+            out.write(array);
+        }
         return out.toByteArray();
     }
   
@@ -329,12 +324,12 @@ class State {
     private int receiveCount;
     private int sentCount;
 
-    public State(SecretKey keySendEnc, SecretKey keyReceiveEnc) {
+    public State(SecretKey keySendEnc, SecretKey keyReceiveEnc, int maxMessages) {
         this.keySendEnc = keySendEnc;
         this.keyReceiveEnc = keyReceiveEnc;
         this.receiveCount = 0;
         this.sentCount = 0;
-        this.maxMessages = 3;
+        this.maxMessages = maxMessages;
     }
 
     public SecretKey getSendKey() {

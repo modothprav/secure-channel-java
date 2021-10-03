@@ -57,25 +57,19 @@ public class EchoClient {
      */
     public State sendMessage(byte[] data, PublicKey destinationKey, PrivateKey sourceKey, State state) {
         try {
-            // Perform Key negotiation if State has been reset or initialized
-            if (state == null && data == null) { // initialize session
-                
-                return this.negotiateKeys(in, out, sourceKey, destinationKey, Util.genMasterKey("AES").getEncoded());
-
-                // Test replay attack
-                //this.sessionKey = Util.genMasterKey("AES").getEncoded();
-                //return this.negotiateKeys(in, out, sourceKey, destinationKey, this.sessionKey);
-
-            } else if (state == null) { // reset session
+            // Perform Key negotiation if State has been reset
+            if (state == null) { 
                 state = this.negotiateKeys(in, out, sourceKey, destinationKey, Util.genMasterKey("AES").getEncoded());
 
                 // Test replay attack
-                //state = this.negotiateKeys(in, out, sourceKey, destinationKey, this.sessionKey);
+                // state = this.negotiateKeys(in, out, sourceKey, destinationKey, this.sessionKey);
             }
 
-            if (data.length > 32) { throw new IllegalArgumentException("Invalid input: Messages needs to be between 1 and 32 characters");}
+            if (data.length > 32 || data.length < 1) { 
+                throw new IllegalArgumentException("Invalid input: Messages needs to be between 1 and 32 characters");
+            }
 
-            // Constructed encrypted message and send over channel
+            // Construct encrypted message and send over channel
             byte[] encrypted = Util.sendMessage(state, new String(data, "UTF-8"), "");
             out.write(encrypted);
             out.flush();
@@ -113,10 +107,11 @@ public class EchoClient {
         out.flush();
 
         // Read Response message and extract ciphertext and signature
-        byte[] resData = new byte[512]; in.read(resData);
+        byte[] resData = new byte[513]; in.read(resData);
         int dataSize = resData.length;
-        byte [] ciphertext = Arrays.copyOfRange(resData, 0, (dataSize + 1) / 2);
-        byte [] signature = Arrays.copyOfRange(resData, (dataSize + 1) / 2, dataSize);
+        byte [] ciphertext = Arrays.copyOfRange(resData, 0, 256);
+        byte [] signature = Arrays.copyOfRange(resData, 256, 512);
+        int maxMessage = resData[512];
 
         // Authenticate then decrypt ciphertext
         if (!Util.verify(ciphertext, signature, publicKey, HASH_ALGORITHM)) {
@@ -132,7 +127,7 @@ public class EchoClient {
         this.outputRequest(reqData, masterKey);
 
         SecretKey sessionKey = new SecretKeySpec(masterKey, "AES");
-        return Util.initChannel(sessionKey, "client");
+        return Util.initChannel(sessionKey, "client", maxMessage);
 
     }
 
@@ -202,12 +197,10 @@ public class EchoClient {
         // Clear store password
         Arrays.fill(storePass, '\0'); storePass = null;
 
-        SecretKey masterKey = Util.genMasterKey("AES");
-
         try {
             client.startConnection("127.0.0.1", 4444);
-            State state = null;
-            state = client.sendMessage(null, serverPublicKey, keyPair.getPrivate(), state); // Initialize 
+            State state = client.negotiateKeys(client.in, client.out, keyPair.getPrivate(), serverPublicKey, Util.genMasterKey("AES").getEncoded());
+            //state = client.sendMessage(null, serverPublicKey, keyPair.getPrivate(), state); // Initialize 
             state = client.sendMessage("FIRST Message".getBytes(), serverPublicKey, keyPair.getPrivate(), state);
             state = client.sendMessage("SECOND Message".getBytes(), serverPublicKey, keyPair.getPrivate(), state);
             state = client.sendMessage("THIRD Message".getBytes(), serverPublicKey, keyPair.getPrivate(), state);
