@@ -336,6 +336,22 @@ class State {
         this.maxMessages = maxMessages;
     }
 
+    /**
+     * Incremebt Message received count by 1
+     */
+    public void msgReceived() {
+        this.receiveCount++;
+    }
+
+    /**
+     * Incremebt Message sent count by 1
+     */
+    public void msgSent() {
+        this.sentCount++;
+    }
+
+    // getters and setters
+
     public SecretKey getSendKey() {
         return this.keySendEnc;
     }
@@ -360,11 +376,5 @@ class State {
         this.receiveCount = n;
     }
 
-    public void msgReceived() {
-        this.receiveCount++;
-    }
-
-    public void msgSent() {
-        this.sentCount++;
-    }
+    
 }
