@@ -161,11 +161,15 @@ public class Util {
         
     }
 
-    public static byte[] sendMessage(State state, String message, String additionalData) throws InvalidKeyException, 
+    public static byte[] sendMessage(State state, String message) throws InvalidKeyException, 
     InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, 
     BadPaddingException, IOException {
         // Update and save message sent count
         state.msgSent();
+        
+        // Out of order test
+        //state.msgReceived();
+
         byte[] sentCount = new byte[1];
         sentCount[0] = (byte) state.getSentCount();
 
@@ -185,7 +189,7 @@ public class Util {
         return mergeArrays(sentCount, iv, ciphertext);
     }
 
-    public static byte[] receiveMessage(State state, byte[] ciphertext, String additionalData) throws 
+    public static byte[] receiveMessage(State state, byte[] ciphertext) throws 
     NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, InvalidAlgorithmParameterException, 
     IllegalBlockSizeException, BadPaddingException, IOException {
 
