@@ -6,7 +6,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
-import java.nio.ByteBuffer;
 import java.security.cert.Certificate;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
@@ -24,7 +23,6 @@ import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
 import java.security.spec.AlgorithmParameterSpec;
 import java.util.Arrays;
-import java.util.Base64;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -131,13 +129,27 @@ public class Util {
 
     }
 
+    /**
+     * Generates a random 256 bit master key
+     * @param alg The Algorithm 
+     * @return A Secret key
+     * @throws NoSuchAlgorithmException
+     */
     public static SecretKey genMasterKey(String alg) throws NoSuchAlgorithmException {
         SecureRandom secureRandom = new SecureRandom();
-        KeyGenerator keyGen = KeyGenerator.getInstance("AES");
+        KeyGenerator keyGen = KeyGenerator.getInstance(alg);
         keyGen.init(256, secureRandom);
         return keyGen.generateKey();
     }
 
+    /**
+     * Generates a secret key by hashing a given phrase with the key specified.
+     * @param phrase The phrase which is hashed
+     * @param key The key which is used to generate the hash
+     * @return An AES symmetric key
+     * @throws NoSuchAlgorithmException
+     * @throws InvalidKeyException
+     */
     public static SecretKey genSymmetricKey(String phrase, SecretKey key) throws NoSuchAlgorithmException, InvalidKeyException {
         SecretKeySpec keySpec = new SecretKeySpec(key.getEncoded(), "HmacSHA256");
         Mac mac = Mac.getInstance("HmacSHA256");
@@ -146,6 +158,16 @@ public class Util {
         return new SecretKeySpec(keyBytes, "AES");
     }
 
+    /**
+     * Initialises a State according to the role specified. Generates two symmetric keys for the
+     * current sate with the specified master key and assigns them accordingly depending on the role.
+     * @param masterKey The session master key
+     * @param role The role this state belongs to - client or server
+     * @param maxMsgs The maximum messages that can be sent per session 
+     * @return A new initialized state
+     * @throws InvalidKeyException
+     * @throws NoSuchAlgorithmException
+     */
     public static State initChannel(SecretKey masterKey, String role, int maxMsgs) throws InvalidKeyException, NoSuchAlgorithmException {
         if (!role.equals("client") && !role.equals("server")) { throw new IllegalArgumentException("Invalid Role specified, must be 'client' or 'server'"); }
         // Generate Send and receive keys
@@ -161,11 +183,30 @@ public class Util {
         
     }
 
-    public static byte[] sendMessage(State state, String message, String additionalData) throws InvalidKeyException, 
+    /**
+     * Performs AES-GCM encryption by first updating the sent msg count of the current
+     * given state, then generating a random IV which then gets added as additional
+     * authenticated data to then finally construct the cipher text.
+     * @param state The current state of the channel
+     * @param message The message to be encrypted
+     * @return Returns a merged array which contains sent count, the iv and the ciphertext
+     * @throws InvalidKeyException
+     * @throws InvalidAlgorithmParameterException
+     * @throws NoSuchAlgorithmException
+     * @throws NoSuchPaddingException
+     * @throws IllegalBlockSizeException
+     * @throws BadPaddingException
+     * @throws IOException
+     */
+    public static byte[] sendMessage(State state, String message) throws InvalidKeyException, 
     InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, 
     BadPaddingException, IOException {
         // Update and save message sent count
         state.msgSent();
+        
+        // Out of order test
+        //state.msgReceived();
+
         byte[] sentCount = new byte[1];
         sentCount[0] = (byte) state.getSentCount();
 
@@ -185,7 +226,23 @@ public class Util {
         return mergeArrays(sentCount, iv, ciphertext);
     }
 
-    public static byte[] receiveMessage(State state, byte[] ciphertext, String additionalData) throws 
+    /**
+     * Performs AES-GCM decryption by extracting the msg coutn, IV and encrypted text 
+     * from the given data. Checks for message ordering and if successful updates the 
+     * receive count in the given state then finally performs decryption and returns 
+     * the decrypted messages.
+     * @param state The current state of the session
+     * @param ciphertext The given ciphertext
+     * @return The decrypted text
+     * @throws NoSuchAlgorithmException
+     * @throws NoSuchPaddingException
+     * @throws InvalidKeyException
+     * @throws InvalidAlgorithmParameterException
+     * @throws IllegalBlockSizeException
+     * @throws BadPaddingException
+     * @throws IOException
+     */
+    public static byte[] receiveMessage(State state, byte[] ciphertext) throws 
     NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, InvalidAlgorithmParameterException, 
     IllegalBlockSizeException, BadPaddingException, IOException {
 
@@ -332,6 +389,22 @@ class State {
         this.maxMessages = maxMessages;
     }
 
+    /**
+     * Incremebt Message received count by 1
+     */
+    public void msgReceived() {
+        this.receiveCount++;
+    }
+
+    /**
+     * Incremebt Message sent count by 1
+     */
+    public void msgSent() {
+        this.sentCount++;
+    }
+
+    // getters and setters
+
     public SecretKey getSendKey() {
         return this.keySendEnc;
     }
@@ -356,11 +429,5 @@ class State {
         this.receiveCount = n;
     }
 
-    public void msgReceived() {
-        this.receiveCount++;
-    }
-
-    public void msgSent() {
-        this.sentCount++;
-    }
+    
 }

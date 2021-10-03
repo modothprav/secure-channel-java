@@ -51,11 +51,19 @@ public class EchoClient {
     }  
 
     /**
-     * Send a message to server and receive a reply.
-     *
-     * @param msg the message to send
+     * Sends a message to the server. If a null state is passed in will perform 
+     * key negotiation again with a new session key and return a new state before 
+     * sending the message to the server. Can only send messages between 1 and 32
+     * characters long. After response is recieved back from the client checks if 
+     * the max message count has been reached if so will return back a null State.
+     * Other wise will return the update State.
+     * @param msg The message to be sent to server
+     * @param destinationKey Server public key
+     * @param sourceKey Client private key
+     * @param state The State of the session
+     * @return The updated or a null state
      */
-    public State sendMessage(byte[] data, PublicKey destinationKey, PrivateKey sourceKey, State state) {
+    public State sendMessage(String msg, PublicKey destinationKey, PrivateKey sourceKey, State state) {
         try {
             // Perform Key negotiation if State has been reset
             if (state == null) { 
@@ -65,12 +73,13 @@ public class EchoClient {
                 // state = this.negotiateKeys(in, out, sourceKey, destinationKey, this.sessionKey);
             }
 
-            if (data.length > 32 || data.length < 1) { 
-                throw new IllegalArgumentException("Invalid input: Messages needs to be between 1 and 32 characters");
+            if (msg.length() > 32 || msg.length() < 1) { 
+                System.out.println("Invalid input: Messages needs to be between 1 and 32 characters");
+                System.exit(0);
             }
 
             // Construct encrypted message and send over channel
-            byte[] encrypted = Util.sendMessage(state, new String(data, "UTF-8"), "");
+            byte[] encrypted = Util.sendMessage(state, msg);
             out.write(encrypted);
             out.flush();
 
@@ -80,7 +89,7 @@ public class EchoClient {
 
             // Decrypt received ciphertext
             byte[] ciphertext = Arrays.copyOfRange(receivedMessage, 0, size);
-            byte [] decrypted = Util.receiveMessage(state, ciphertext, "");
+            byte [] decrypted = Util.receiveMessage(state, ciphertext);
 
             this.outputComms(encrypted, decrypted);
 
@@ -94,6 +103,28 @@ public class EchoClient {
         }
     }
 
+    /**
+     * Perform Key negotation with the server by send a master key and confirming if the received
+     * message matches the originally sent master key. Perform RSA encryption, decryption with 
+     * siging and verification of master keys received.Splits the received message into its 
+     * individual components (ciphertext, signature and max msg) to get it ready for verification 
+     * and decryption. Once verified and decrypted initialises a State for the client with the 
+     * specified max message number and returns it. 
+     * @param in The DataInputStream where the confirmation is received back from server
+     * @param out The DataOutputStream where the message is sent to the server
+     * @param privateKey The private key of the client or source key
+     * @param publicKey The public key of the server or the destination key
+     * @param masterKey The session key which will be encrypted and sent to server
+     * @return An initialized State
+     * @throws IOException
+     * @throws InvalidKeyException
+     * @throws IllegalBlockSizeException
+     * @throws BadPaddingException
+     * @throws NoSuchAlgorithmException
+     * @throws NoSuchPaddingException
+     * @throws SignatureException
+     * @throws SecurityException
+     */
     private State negotiateKeys(DataInputStream in, DataOutputStream out, PrivateKey privateKey, PublicKey publicKey, byte[] masterKey) throws 
     IOException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, NoSuchAlgorithmException, NoSuchPaddingException, 
     SignatureException, SecurityException {
@@ -106,9 +137,8 @@ public class EchoClient {
         out.write(reqData);
         out.flush();
 
-        // Read Response message and extract ciphertext and signature
+        // Read Response message and extract ciphertext, signature and maxMessage number
         byte[] resData = new byte[513]; in.read(resData);
-        int dataSize = resData.length;
         byte [] ciphertext = Arrays.copyOfRange(resData, 0, 256);
         byte [] signature = Arrays.copyOfRange(resData, 256, 512);
         int maxMessage = resData[512];
@@ -148,9 +178,9 @@ public class EchoClient {
     }
 
     /**
-     * 
-     * @param message The message being sent to the server (ciphertext)
-     * @param plaintext The message received from the server
+     * Outputs the messages sent and received during the key negotiation process
+     * @param sentMessage The message sent to server
+     * @param receivedMessage The message received from the server
      */
     private void outputRequest(byte[] sentMessage, byte[] receivedMessage) {
         System.out.println("\n############## KEY NEGOTIATION ################");
@@ -163,6 +193,11 @@ public class EchoClient {
         System.out.println("\n###############################################");
     }
 
+    /**
+     * Outputs the messages sent and recieved by the server on the console
+     * @param ciphertext The ciphertext message sent to server
+     * @param plaintext The plaintext message received from the server
+     */
     private void outputComms(byte[] ciphertext, byte[] plaintext) throws UnsupportedEncodingException {
         System.out.println("\n################ ECHO-REQUEST #################");
         System.out.println("\n<-------------------------------------->");
@@ -191,26 +226,26 @@ public class EchoClient {
         // Clear key password
         Arrays.fill(keyPass, '\0'); keyPass = null;
 
-        // Get Server Public Key
-        PublicKey serverPublicKey = Util.getPublicKeyFromStore("server", storePass);
+        // Get Server Public Key and client private key
+        PublicKey publicKey = Util.getPublicKeyFromStore("server", storePass);
+        PrivateKey privateKey = keyPair.getPrivate();
 
         // Clear store password
         Arrays.fill(storePass, '\0'); storePass = null;
 
         try {
             client.startConnection("127.0.0.1", 4444);
-            State state = client.negotiateKeys(client.in, client.out, keyPair.getPrivate(), serverPublicKey, Util.genMasterKey("AES").getEncoded());
-            //state = client.sendMessage(null, serverPublicKey, keyPair.getPrivate(), state); // Initialize 
-            state = client.sendMessage("FIRST Message".getBytes(), serverPublicKey, keyPair.getPrivate(), state);
-            state = client.sendMessage("SECOND Message".getBytes(), serverPublicKey, keyPair.getPrivate(), state);
-            state = client.sendMessage("THIRD Message".getBytes(), serverPublicKey, keyPair.getPrivate(), state);
-            state = client.sendMessage("FOURTH Message".getBytes(), serverPublicKey, keyPair.getPrivate(), state);
+            // Init state and channel
+            //client.sessionKey = Util.genMasterKey("AES").getEncoded();
+            State state = client.negotiateKeys(client.in, client.out, privateKey, publicKey, Util.genMasterKey("AES").getEncoded());
             
+            state = client.sendMessage("FRIST Message", publicKey, privateKey, state);
+            state = client.sendMessage("SECOND Message", publicKey, privateKey, state);
+            state = client.sendMessage("THIRD Message", publicKey, privateKey, state);
+            state = client.sendMessage("FOURTH Message", publicKey, privateKey, state);
+            state = client.sendMessage("FIFTH Message", publicKey, privateKey, state);
+            state = client.sendMessage("SIXTH Message", publicKey, privateKey, state);
             
-
-            //client.sendMessage("ABCDEFGH", serverPublicKey, keyPair.getPrivate());
-            //client.sendMessage("87654321", serverPublicKey, keyPair.getPrivate());
-            //client.sendMessage("HGFEDCBA", serverPublicKey, keyPair.getPrivate());
             client.stopConnection();
         } catch (NullPointerException e) {
             throw new IOException("Connection ERROR - Check if Server running and the connection to Server");

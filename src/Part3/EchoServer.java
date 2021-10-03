@@ -32,7 +32,7 @@ public class EchoServer {
     private DataInputStream in;
     private final String CIPHER = "RSA/ECB/PKCS1Padding";
     private final String HASH_ALGORITHM = "SHA256withRSA";
-    private static final String ERROR_MSG = "Valid command: java Part2.EchoServer <store password> <keypassword>";
+    private static final String ERROR_MSG = "Valid command: java Part2.EchoServer <store password> <keypassword> <max messages>";
     private ArrayList<byte[]> sessionKeys = new ArrayList<>(); // stores session keys to check for replay attacks
     private static final int MAX_MESSAGES = 5; // Default max messages set to 5
 
@@ -57,7 +57,7 @@ public class EchoServer {
             clientSocket = serverSocket.accept();
             out = new DataOutputStream(clientSocket.getOutputStream());
             in = new DataInputStream(clientSocket.getInputStream());
-            State state = null;
+            State state = null; // state always starts off as null so it gets initialized first
             byte[] data = new byte[512];
             int numBytes;
             
@@ -73,10 +73,10 @@ public class EchoServer {
 
                 // Decrypt Received message
                 byte[] ciphertext = Arrays.copyOfRange(data, 0, numBytes);
-                byte[] decrypted = Util.receiveMessage(state, ciphertext, "");
+                byte[] decrypted = Util.receiveMessage(state, ciphertext);
 
                 // Echo back received message after encrypting
-                byte[] encrypted = Util.sendMessage(state, new String(decrypted, "UTF-8"), "");
+                byte[] encrypted = Util.sendMessage(state, new String(decrypted, "UTF-8"));
                 out.write(encrypted);
                 out.flush();
 
@@ -84,6 +84,7 @@ public class EchoServer {
 
                 // If max message count is reached then reset state to gen new session key
                 if (state.getMaxMsgCount() <= state.getReceiveCount()) { state = null; }
+
             }
             stop();
         } catch (IOException e) {
@@ -92,6 +93,27 @@ public class EchoServer {
 
     }
 
+    /**
+     * Negotiatie a master key with the client. Perform asymmetric encryption when communicating the keys
+     * Once the received message has been verified and decrypted, check if the given master key has already
+     * been used in a session if so then throw an error. If not then send by the master key with the signature
+     * maximum messages per session count.
+     * @param in The DataInputStream where messages are received from the client
+     * @param out The DataOutputStram where messages are sent to the client
+     * @param privateKey The server private key
+     * @param publicKey The client public key
+     * @param data The data received by the client
+     * @param maxMsgs The maximum number of messages per session
+     * @return The master key sent by the client
+     * @throws InvalidKeyException
+     * @throws NoSuchAlgorithmException
+     * @throws SignatureException
+     * @throws SecurityException
+     * @throws IllegalBlockSizeException
+     * @throws BadPaddingException
+     * @throws NoSuchPaddingException
+     * @throws IOException
+     */
     private byte[] negotiateKeys(DataInputStream in, DataOutputStream out, PrivateKey privateKey, PublicKey publicKey, byte[] data, int maxMsgs) throws 
     InvalidKeyException, NoSuchAlgorithmException, SignatureException, SecurityException, IllegalBlockSizeException, BadPaddingException, 
     NoSuchPaddingException, IOException {
@@ -131,9 +153,9 @@ public class EchoServer {
     } 
 
     /**
-     * 
-     * @param message The message that is being sent to the client (ciphertext)
-     * @param plaintext The decrypted message received by the client
+     * Outputs the messages sent and received during the key negotiation process
+     * @param message The message received from the client
+     * @param plaintext The message sent back to the client
      */
     private void outputRequest(byte[] message, String plaintext) {
         System.out.println("\n############## KEY NEGOTIATION ################");
@@ -146,6 +168,13 @@ public class EchoServer {
         System.out.println("\n###############################################");
     }
 
+    /**
+     * Outputs the messages received and sent during symmetric communication 
+     * between client and server
+     * @param ciphertext The message being sent
+     * @param plaintext The received message
+     * @throws UnsupportedEncodingException
+     */
     private void outputComms(byte[] ciphertext, byte[] plaintext) throws UnsupportedEncodingException {
         System.out.println("\n############### ECHO-RESPONSE #################");
         System.out.println("\n<-------------------------------------->");
