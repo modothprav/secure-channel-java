@@ -146,7 +146,7 @@ public class Util {
         return new SecretKeySpec(keyBytes, "AES");
     }
 
-    public static State initChannel(SecretKey masterKey, String role) throws InvalidKeyException, NoSuchAlgorithmException {
+    public static State initChannel(SecretKey masterKey, String role, int maxMsgs) throws InvalidKeyException, NoSuchAlgorithmException {
         if (!role.equals("client") && !role.equals("server")) { throw new IllegalArgumentException("Invalid Role specified, must be 'client' or 'server'"); }
         // Generate Send and receive keys
         SecretKey keySendEnc = genSymmetricKey("Client to Server", masterKey);
@@ -154,16 +154,21 @@ public class Util {
 
         // Swap send and receive keys if role is server
         if (role.equals("client")) {
-            return new State(keySendEnc, keyReceiveEnc);
+            return new State(keySendEnc, keyReceiveEnc, maxMsgs);
         } else {
-            return new State(keyReceiveEnc, keySendEnc);
+            return new State(keyReceiveEnc, keySendEnc, maxMsgs);
         }
         
     }
 
     public static byte[] sendMessage(State state, String message, String additionalData) throws InvalidKeyException, 
     InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, 
-    BadPaddingException, UnsupportedEncodingException {
+    BadPaddingException, IOException {
+        // Update and save message sent count
+        state.msgSent();
+        byte[] sentCount = new byte[1];
+        sentCount[0] = (byte) state.getSentCount();
+
         // Create and fill IV
         SecureRandom secRandom = new SecureRandom();
         byte[] iv = new byte[12]; secRandom.nextBytes(iv);
@@ -173,31 +178,40 @@ public class Util {
         GCMParameterSpec parameterSpec = new GCMParameterSpec(128, iv); 
         cipher.init(Cipher.ENCRYPT_MODE, state.getSendKey(), parameterSpec);
 
+        cipher.updateAAD(sentCount);
         cipher.updateAAD(iv); 
         byte[] ciphertext = cipher.doFinal(message.getBytes("UTF-8"));
 
-        // Construct message
-        ByteBuffer byteBuffer = ByteBuffer.allocate(iv.length + ciphertext.length);
-        byteBuffer.put(iv); byteBuffer.put(ciphertext);
-
-        state.msgSent();
-        return byteBuffer.array();
+        return mergeArrays(sentCount, iv, ciphertext);
     }
 
     public static byte[] receiveMessage(State state, byte[] ciphertext, String additionalData) throws 
     NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, InvalidAlgorithmParameterException, 
-    IllegalBlockSizeException, BadPaddingException {
+    IllegalBlockSizeException, BadPaddingException, IOException {
+
         final Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
         // Get IV from message
-        byte[] gcmIV = Arrays.copyOfRange(ciphertext, 0, 12);
-        byte[] encrypted = Arrays.copyOfRange(ciphertext, 12, ciphertext.length);
+        byte[] sentCount = Arrays.copyOfRange(ciphertext, 0, 1);
+        byte[] gcmIV = Arrays.copyOfRange(ciphertext, 1, 13);
+        byte[] encrypted = Arrays.copyOfRange(ciphertext, 13, ciphertext.length);
+
+        // Out of Order test 
+        //state.msgReceived();
+
+        // Check if received message is out of order
+        if ((int) sentCount[0] <= state.getReceiveCount()) {
+            System.out.println("\nERROR - Message Out Of Order");
+            System.exit(0);
+        }
+
+        state.setMsgReceived(sentCount[0]); // Update receive count
 
         AlgorithmParameterSpec iv = new GCMParameterSpec(128, gcmIV);  
         
         cipher.init(Cipher.DECRYPT_MODE, state.getReceiveKey(), iv);
 
+        cipher.updateAAD(sentCount);;
         cipher.updateAAD(gcmIV);
-        state.msgReceived();
         return cipher.doFinal(encrypted);
     }
 
@@ -288,18 +302,16 @@ public class Util {
     }
 
     /**
-     * Merges two byte arrays into one, by appending the second array
-     * to the first one. Used to merge the ciphertext and singature 
-     * to generate the message which will be sent over the connection.
-     * @param ciphertext The first byte array
-     * @param signature The second byte array
-     * @return The combined byte array of the given two arguments
+     * 
+     * @param data
+     * @return
      * @throws IOException
      */
-    public static byte[] mergeArrays(byte[] ciphertext, byte[] signature) throws IOException {
+    public static byte[] mergeArrays(byte[]... data) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        out.write(ciphertext);
-        out.write(signature);
+        for (byte[] array : data) {
+            out.write(array);
+        }
         return out.toByteArray();
     }
   
@@ -308,14 +320,16 @@ public class Util {
 class State {
     private final SecretKey keySendEnc;
     private final SecretKey keyReceiveEnc;
+    private final int maxMessages;
     private int receiveCount;
     private int sentCount;
 
-    public State(SecretKey keySendEnc, SecretKey keyReceiveEnc) {
+    public State(SecretKey keySendEnc, SecretKey keyReceiveEnc, int maxMessages) {
         this.keySendEnc = keySendEnc;
         this.keyReceiveEnc = keyReceiveEnc;
         this.receiveCount = 0;
         this.sentCount = 0;
+        this.maxMessages = maxMessages;
     }
 
     public SecretKey getSendKey() {
@@ -326,12 +340,20 @@ class State {
         return this.keyReceiveEnc;
     }
 
+    public int getMaxMsgCount() {
+        return this.maxMessages;
+    }
+
     public int getReceiveCount() {
         return this.receiveCount;
     }
 
     public int getSentCount() {
         return this.sentCount;
+    }
+
+    public void setMsgReceived(int n) {
+        this.receiveCount = n;
     }
 
     public void msgReceived() {

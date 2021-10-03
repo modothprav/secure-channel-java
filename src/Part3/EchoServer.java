@@ -13,6 +13,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SignatureException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 
@@ -32,6 +33,8 @@ public class EchoServer {
     private final String CIPHER = "RSA/ECB/PKCS1Padding";
     private final String HASH_ALGORITHM = "SHA256withRSA";
     private static final String ERROR_MSG = "Valid command: java Part2.EchoServer <store password> <keypassword>";
+    private ArrayList<byte[]> sessionKeys = new ArrayList<>(); // stores session keys to check for replay attacks
+    private static final int MAX_MESSAGES = 5; // Default max messages set to 5
 
     /**
      * Create the server socket and wait for a connection.
@@ -46,7 +49,7 @@ public class EchoServer {
      * @throws SignatureException
      * @throws InvalidAlgorithmParameterException
      */
-    public void start(int port, PublicKey destinationKey, PrivateKey sourceKey) throws
+    public void start(int port, PublicKey destinationKey, PrivateKey sourceKey, int maxMsgs) throws
     InvalidKeyException, IllegalBlockSizeException, BadPaddingException, NoSuchAlgorithmException, 
     NoSuchPaddingException, SignatureException, InvalidAlgorithmParameterException {
         try {
@@ -57,14 +60,14 @@ public class EchoServer {
             State state = null;
             byte[] data = new byte[512];
             int numBytes;
+            
             while ((numBytes = in.read(data)) != -1) {
 
-                // Perform Key negotiation if State is reset of initialized
+                // Perform Key negotiation if State is reset or initialized
                 if (state == null) {
-                    byte[] key = this.negotiateKeys(in, out, sourceKey, destinationKey, data);
-
+                    byte[] key = this.negotiateKeys(in, out, sourceKey, destinationKey, data, maxMsgs);
                     SecretKey masterKey = new SecretKeySpec(key, "AES");
-                    state = Util.initChannel(masterKey, "server");
+                    state = Util.initChannel(masterKey, "server", maxMsgs);
                     continue;
                 }
 
@@ -78,6 +81,9 @@ public class EchoServer {
                 out.flush();
 
                 this.outputComms(encrypted, decrypted);
+
+                // If max message count is reached then reset state to gen new session key
+                if (state.getMaxMsgCount() <= state.getReceiveCount()) { state = null; }
             }
             stop();
         } catch (IOException e) {
@@ -86,10 +92,9 @@ public class EchoServer {
 
     }
 
-    private byte[] negotiateKeys(DataInputStream in, DataOutputStream out, PrivateKey privateKey, PublicKey publicKey, byte[] data) throws 
+    private byte[] negotiateKeys(DataInputStream in, DataOutputStream out, PrivateKey privateKey, PublicKey publicKey, byte[] data, int maxMsgs) throws 
     InvalidKeyException, NoSuchAlgorithmException, SignatureException, SecurityException, IllegalBlockSizeException, BadPaddingException, 
     NoSuchPaddingException, IOException {
-        
         // Split content into signature and ciphertext
         int dataSize = data.length;
         byte [] ciphertext = Arrays.copyOfRange(data, 0, (dataSize + 1) / 2);
@@ -100,15 +105,23 @@ public class EchoServer {
             throw new SecurityException("Authentication FAILED - Signature does not match");
         }
         byte[] masterKey = Util.decrypt(ciphertext, privateKey, CIPHER);
+        
+        // If the same session key is used throw an error
+        for (int i = 0; i < this.sessionKeys.size(); i++) {
+            if (Arrays.equals(this.sessionKeys.get(i), masterKey)) { throw new SecurityException("REPLAY ATTACK DETECTED"); }
+        }
+
+        this.sessionKeys.add(masterKey); // add key for future checks
 
         String msg = Base64.getEncoder().encodeToString(masterKey);
 
         // Build the components required for the response message
         byte[] encrypted = Util.encrypt(masterKey, publicKey, CIPHER);
         byte[] signature = Util.sign(encrypted, privateKey, HASH_ALGORITHM);
+        byte[] maxMessage = new byte[1]; maxMessage[0] = (byte) maxMsgs;
 
         // Send encrypted Master key with signature back to confirm
-        byte[] resData = Util.mergeArrays(encrypted, signature);
+        byte[] resData = Util.mergeArrays(encrypted, signature, maxMessage);
         out.write(resData);
         out.flush();
 
@@ -164,6 +177,13 @@ public class EchoServer {
     public static void main(String[] args) throws Exception{
         if (args.length < 2) { throw new IllegalArgumentException("Not enough arguments specified\n" + ERROR_MSG); }
 
+        int maxMessages = MAX_MESSAGES;
+        
+        if (args.length > 2) { 
+            maxMessages = Integer.parseInt(args[2]);
+            if (maxMessages == 0) { throw new IllegalArgumentException("Max Messages must be greater than 0"); }
+        } 
+
         char[] storePass = args[0].toCharArray();
         char[] keyPass = args[1].toCharArray();
         Arrays.fill(args, null);
@@ -182,7 +202,7 @@ public class EchoServer {
         // clear store password
         Arrays.fill(storePass, '\0'); storePass = null;
 
-        server.start(4444, clientPublicKey, keyPair.getPrivate());
+        server.start(4444, clientPublicKey, keyPair.getPrivate(), maxMessages);
     }
 
 }
