@@ -55,4 +55,46 @@ The following output should be observerd.
 
 ![image](https://s3.us-west-2.amazonaws.com/secure.notion-static.com/725a7038-a710-4c78-b525-b35282d9a2c9/Untitled.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAT73L2G45O3KS52Y5%2F20211023%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20211023T064146Z&X-Amz-Expires=86400&X-Amz-Signature=580f4360259e59314d63d80d333a7de4cbb33158bb5fa1019ee213538dbeb026&X-Amz-SignedHeaders=host&response-content-disposition=filename%20%3D%22Untitled.png%22)
 
+### Section Two: Key management
+
+The keys were generated using the keytool command which comes with the JCE. The client and server keys were created with same key password for testing purposes. The following commands shown below were used to generate the keys. 
+``` bash
+keytool -genkey -alias client -keyalg RSA -keystore cybr372.jks -storepass badpassword -keypass password -storetype JKS
+```
+``` bash
+keytool -genkey -alias server -keyalg RSA -keystore cybr372.jks -storepass badpassword -keypass password -storetype JKS
+```
+
+#### Step 1: Navigate to `src`
+
+Open **two** terminals and nivigate to the the `src` folder of the project in **both** of the terminals.
+
+``` bash
+cd src
+```
+
+#### Step 2: Compilation
+
+Compile the following files in one of the terminal sessions.
+
+``` bash
+javac Part2/EchoServer.java Part2/EchoClient.java Part2/Util.java
+```
+
+### Step 3: Run Program
+
+``` bash
+java Part2.EchoServer <storePassword> <keyPassword>
+```
+``` bash
+java Part2.EchoClient <storePassword> <keyPassword>
+```
+
+Run the **server** program on one terminal and the **client** program on the other. Will also have to specify the *store* password (badpassword) and the *key* password.
+
+**Note:** Ensure that the server program is run first so it's listening for incoming connections.
+
+The following output should be observed.
+
+![image](https://s3.us-west-2.amazonaws.com/secure.notion-static.com/c6f1d684-8938-4b42-ad5b-f9d55216dc5c/Untitled.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAT73L2G45O3KS52Y5%2F20211024%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20211024T065650Z&X-Amz-Expires=86400&X-Amz-Signature=dafbe783b11878c744b30d67d159ee40ceb2f421962c6ce7c9d21e8424dfae1e&X-Amz-SignedHeaders=host&response-content-disposition=filename%20%3D%22Untitled.png%22)
 
