@@ -129,7 +129,7 @@ java Part3.EchoClient <storePassword> <keyPassword>
 
 Run the server program on one terminal and the client program on the other. Will also have to specify the store password (badpassword) and the key password. The key password for both the client and server is password, for simplicity and testing purposes. 
 
-When running the server program user can also specify the number of maximum messages. If not specified this value will be set to 5. 
+When running the server program, the user can also specify the number of maximum messages that can be received before key negotiation has to be performed again. If not specified this value will be set to 5. 
 
 **Note:** Ensure that the server is ran first and listening for connections.
 
