@@ -81,7 +81,7 @@ Compile the following files in one of the terminal sessions.
 javac Part2/EchoServer.java Part2/EchoClient.java Part2/Util.java
 ```
 
-### Step 3: Run Program
+#### Step 3: Run Program
 
 ``` bash
 java Part2.EchoServer <storePassword> <keyPassword>
@@ -98,3 +98,43 @@ The following output should be observed.
 
 ![image](https://s3.us-west-2.amazonaws.com/secure.notion-static.com/c6f1d684-8938-4b42-ad5b-f9d55216dc5c/Untitled.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAT73L2G45O3KS52Y5%2F20211024%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20211024T065650Z&X-Amz-Expires=86400&X-Amz-Signature=dafbe783b11878c744b30d67d159ee40ceb2f421962c6ce7c9d21e8424dfae1e&X-Amz-SignedHeaders=host&response-content-disposition=filename%20%3D%22Untitled.png%22)
 
+### Section Three: Secure Channel
+
+This sections uses asymmetric encryption for messages regarding key negotiation and once the symmetric keys are generated, symmetric encryption will be used for future messages. This continues until a max message limit is reached where key negotiation occurs again if there are more messages to be sent and received.
+
+#### Step 1: Navigate to `src`
+
+Open **two** terminals and nivigate to the the `src` folder of the project in **both** of the terminals.
+
+``` bash
+cd src
+```
+
+#### Step 2: Compilation
+
+Compile the following files in one of the terminal sessions.
+
+``` bash
+javac Part3/EchoServer.java Part3/EchoClient.java Part3/Util.java
+```
+
+#### Step 3: Run Program
+
+``` bash
+java Part3x.EchoServer <storePassword> <keyPassword> [maxMessages]
+```
+``` bash
+java Part3.EchoClient <storePassword> <keyPassword>
+```
+
+Run the server program on one terminal and the client program on the other. Will also have to specify the store password (badpassword) and the key password. The key password for both the client and server is password, for simplicity and testing purposes. 
+
+When running the server program user can also specify the number of maximum messages. If not specified this value will be set to 5. 
+
+**Note:** Ensure that the server is ran first and listening for connections.
+
+The following output should be observed.
+
+![image](https://s3.us-west-2.amazonaws.com/secure.notion-static.com/8ee0d219-0322-4046-8824-8bc539e61def/Untitled.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAT73L2G45O3KS52Y5%2F20211024%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20211024T071703Z&X-Amz-Expires=86400&X-Amz-Signature=b8674ed57fd87da56040cd9c2aeb33aacdf41fbc926a123bcfb50c1b0e6f6867&X-Amz-SignedHeaders=host&response-content-disposition=filename%20%3D%22Untitled.png%22)
+
+![image](https://s3.us-west-2.amazonaws.com/secure.notion-static.com/85c0c9c1-4b50-439c-b820-dc42a3ddc783/Untitled.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAT73L2G45O3KS52Y5%2F20211024%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20211024T071729Z&X-Amz-Expires=86400&X-Amz-Signature=446e48cb35302886c53b8a38f8b5395af9c241a36cf831632dd9646b616f37af&X-Amz-SignedHeaders=host&response-content-disposition=filename%20%3D%22Untitled.png%22)
