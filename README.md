@@ -45,7 +45,7 @@ The following output should be observed
 
 First paste the **Client** Public key onto the server's terminal and press enter so the server starts listenning for connections. Then paste the **Server** public key onto the client's terminal.
 
-![image](https://s3.us-west-2.amazonaws.com/secure.notion-static.com/e012f684-6b0a-41ea-a8fd-f08520989910/Untitled.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAT73L2G45O3KS52Y5%2F20211023%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20211023T063618Z&X-Amz-Expires=86400&X-Amz-Signature=85a4ba14b2b71a6c00d6ab8746e2596e92f07607be843e4d0a52388173e8e83f&X-Amz-SignedHeaders=host&response-content-disposition=filename%20%3D%22Untitled.png%22)
+![image](https://s3.us-west-2.amazonaws.com/secure.notion-static.com/21593c99-af00-4127-a266-ceaba35bc1aa/Untitled.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIAT73L2G45EIPT3X45%2F20221016%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20221016T084206Z&X-Amz-Expires=86400&X-Amz-Signature=f6cae5871ac5e6d50183cce0a0450eed2a509da564c84faaf7cc4dc0cc2aca6a&X-Amz-SignedHeaders=host&response-content-disposition=filename%20%3D%22Untitled.png%22&x-id=GetObject)
 
 #### Step 4: Send Messages
 
@@ -53,7 +53,7 @@ Once the Server Public key is pasted onto the client's terminal, press enter to 
 
 The following output should be observerd.
 
-![image](https://s3.us-west-2.amazonaws.com/secure.notion-static.com/725a7038-a710-4c78-b525-b35282d9a2c9/Untitled.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAT73L2G45O3KS52Y5%2F20211023%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20211023T064146Z&X-Amz-Expires=86400&X-Amz-Signature=580f4360259e59314d63d80d333a7de4cbb33158bb5fa1019ee213538dbeb026&X-Amz-SignedHeaders=host&response-content-disposition=filename%20%3D%22Untitled.png%22)
+![image](https://s3.us-west-2.amazonaws.com/secure.notion-static.com/725a7038-a710-4c78-b525-b35282d9a2c9/Untitled.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIAT73L2G45EIPT3X45%2F20221016%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20221016T085021Z&X-Amz-Expires=86400&X-Amz-Signature=f399b90bf7fbfff0fe4a8723f1ddc6c72c0c43835bea4b28c50b3908993d01c7&X-Amz-SignedHeaders=host&response-content-disposition=filename%20%3D%22Untitled.png%22&x-id=GetObject)
 
 ### Section Two: Key management
 
@@ -96,7 +96,7 @@ Run the **server** program on one terminal and the **client** program on the oth
 
 The following output should be observed.
 
-![image](https://s3.us-west-2.amazonaws.com/secure.notion-static.com/c6f1d684-8938-4b42-ad5b-f9d55216dc5c/Untitled.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAT73L2G45O3KS52Y5%2F20211024%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20211024T065650Z&X-Amz-Expires=86400&X-Amz-Signature=dafbe783b11878c744b30d67d159ee40ceb2f421962c6ce7c9d21e8424dfae1e&X-Amz-SignedHeaders=host&response-content-disposition=filename%20%3D%22Untitled.png%22)
+![image](https://s3.us-west-2.amazonaws.com/secure.notion-static.com/c6f1d684-8938-4b42-ad5b-f9d55216dc5c/Untitled.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIAT73L2G45EIPT3X45%2F20221016%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20221016T085233Z&X-Amz-Expires=86400&X-Amz-Signature=9712437b6dde44e076fdfacc6134cb7fb06fdfbb47945f3022ac95afddb6fc22&X-Amz-SignedHeaders=host&response-content-disposition=filename%20%3D%22Untitled.png%22&x-id=GetObject)
 
 ### Section Three: Secure Channel
 
@@ -135,6 +135,6 @@ When running the server program, the user can also specify the number of maximum
 
 The following output should be observed.
 
-![image](https://s3.us-west-2.amazonaws.com/secure.notion-static.com/8ee0d219-0322-4046-8824-8bc539e61def/Untitled.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAT73L2G45O3KS52Y5%2F20211024%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20211024T071703Z&X-Amz-Expires=86400&X-Amz-Signature=b8674ed57fd87da56040cd9c2aeb33aacdf41fbc926a123bcfb50c1b0e6f6867&X-Amz-SignedHeaders=host&response-content-disposition=filename%20%3D%22Untitled.png%22)
+![image](https://s3.us-west-2.amazonaws.com/secure.notion-static.com/8ee0d219-0322-4046-8824-8bc539e61def/Untitled.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIAT73L2G45EIPT3X45%2F20221016%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20221016T085340Z&X-Amz-Expires=86400&X-Amz-Signature=9f81e3964720ca23aeee4972bce17932c04e3e174ca20435c4a101fd5aafc53f&X-Amz-SignedHeaders=host&response-content-disposition=filename%20%3D%22Untitled.png%22&x-id=GetObject)
 
-![image](https://s3.us-west-2.amazonaws.com/secure.notion-static.com/85c0c9c1-4b50-439c-b820-dc42a3ddc783/Untitled.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAT73L2G45O3KS52Y5%2F20211024%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20211024T071729Z&X-Amz-Expires=86400&X-Amz-Signature=446e48cb35302886c53b8a38f8b5395af9c241a36cf831632dd9646b616f37af&X-Amz-SignedHeaders=host&response-content-disposition=filename%20%3D%22Untitled.png%22)
+![image](https://s3.us-west-2.amazonaws.com/secure.notion-static.com/85c0c9c1-4b50-439c-b820-dc42a3ddc783/Untitled.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIAT73L2G45EIPT3X45%2F20221016%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20221016T085412Z&X-Amz-Expires=86400&X-Amz-Signature=363dad387f92effece50c8870a652932b4d7c1a7c27099863186f7c9685a4e8c&X-Amz-SignedHeaders=host&response-content-disposition=filename%20%3D%22Untitled.png%22&x-id=GetObject)
